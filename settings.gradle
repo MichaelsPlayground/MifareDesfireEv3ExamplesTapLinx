@@ -26,5 +26,5 @@ buildscript {
     }
 }
 
-rootProject.name = "TapLinxProximityCheck"
+rootProject.name = "MifareDesfireEv3ExamplesDesTapLinx"
 include ':app'

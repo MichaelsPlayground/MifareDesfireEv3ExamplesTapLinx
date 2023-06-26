@@ -1,9 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.TapLinxExample" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.MifareDesfireEv3ExamplesDesTapLinx" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorStatusBar</item>
     </style>
 
-    <style name="Theme.TapLinxExample" parent="Base.Theme.TapLinxExample" />
+    <style name="Theme.MifareDesfireEv3ExamplesDesTapLinx" parent="Base.Theme.MifareDesfireEv3ExamplesDesTapLinx" />
 </resources>
