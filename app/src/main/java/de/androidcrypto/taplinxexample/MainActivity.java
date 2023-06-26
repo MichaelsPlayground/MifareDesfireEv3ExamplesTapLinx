@@ -1,6 +1,8 @@
 package de.androidcrypto.taplinxexample;
 
 import android.annotation.TargetApi;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.nfc.NfcAdapter;
@@ -29,6 +31,9 @@ import com.nxp.nfclib.KeyType;
 import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
 import com.nxp.nfclib.desfire.DESFireFactory;
+import com.nxp.nfclib.desfire.EV1KeySettings;
+import com.nxp.nfclib.desfire.EV2PICCConfigurationSettings;
+import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
 import com.nxp.nfclib.desfire.IDESFireEV2;
 import com.nxp.nfclib.desfire.IDESFireEV3;
@@ -59,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     /**
      * NxpNfclib instance.
-    */
+     */
     private NxpNfcLib libInstance = null;
 
     /**
@@ -74,11 +79,29 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     /**
      * Desfire card object.
      */
+
     private IDESFireEV1 desFireEV1;
 
     private IDESFireEV2 desFireEV2;
 
     private IDESFireEV3 desFireEV3;
+
+    /**
+     * section for sample keys
+     */
+
+    private IKeyData objKEY_2KTDES_ULC = null;
+    private IKeyData objKEY_2KTDES = null;
+    private IKeyData objKEY_AES128 = null;
+    private byte[] default_ff_key = null;
+    private IKeyData default_zeroes_key = null;
+
+    private static final String ALIAS_KEY_AES128 = "key_aes_128";
+    private static final String ALIAS_KEY_2KTDES = "key_2ktdes";
+    private static final String ALIAS_KEY_2KTDES_ULC = "key_2ktdes_ulc";
+    private static final String ALIAS_DEFAULT_FF = "alias_default_ff";
+    private static final String ALIAS_KEY_AES128_ZEROES = "alias_default_00";
+    private static final String EXTRA_KEYS_STORED_FLAG = "keys_stored_flag";
 
     private CardType mCardType = CardType.UnknownCard;
 
@@ -227,6 +250,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private final byte[] VIRTUAL_CARD_KEY_PROXIMITY = Utils.hexStringToByteArray("20200000000000000000000000000000");
     private final byte VIRTUAL_CARD_KEY_PROXIMITY_NUMBER = (byte) 0x21;
 
+    private final byte[] APPLICATION_KEY_CAR_AES = Utils.hexStringToByteArray("A2000000000000000000000000000000");
+
     private final byte STANDARD_FILE_NUMBER = (byte) 0x01;
 
 
@@ -372,9 +397,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         /* Initialize the library and register to this activity */
         initializeLibrary();
 
+        initializeKeys();
+
         /* Initialize the Cipher and init vector of 16 bytes with 0xCD */
         initializeCipherinitVector();
-
 
 
         //allLayoutsInvisible(); // default
@@ -384,8 +410,110 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
+        changeKeyD2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // change key 02 in sample app to an AES key
+                clearOutputFields();
+                writeToUiAppend(output, "change key 02 from DES default to AES key");
+
+                byte[] APPLICATION_KEY_CAR_DEFAULT2 = new byte[16];
+
+                // authenticate with master application key = 0
+                int masterApplicationKeyNumber = 0;
+
+                byte[] TDES_KEY_ZERO = new byte[16]; // 16 bytes even for single des key (double the key)
+                KeyData objKEY_TDES_ZERO = new KeyData();
+                SecretKeySpec secretKeySpecTDesZero = new SecretKeySpec(TDES_KEY_ZERO, "TDES");
+                objKEY_TDES_ZERO.setKey(secretKeySpecTDesZero);
+
+                // test key 02
+                desFireEV3.authenticate(APPLICATION_KEY_CAR_NUMBER, IDESFireEV3.AuthType.Native, KeyType.THREEDES, objKEY_TDES_ZERO);
+                String authStatus = desFireEV3.getAuthStatus();
+                writeToUiAppend(output, "authStatus key 2: " + authStatus);
+
+                // auth with key 0
+                desFireEV3.authenticate(masterApplicationKeyNumber, IDESFireEV3.AuthType.Native, KeyType.THREEDES, objKEY_TDES_ZERO);
+                authStatus = desFireEV3.getAuthStatus();
+                writeToUiAppend(output, "authStatus key 0: " + authStatus);
+
+                //byte[] AES_KEY_CAR = new byte[16]; // 16 bytes even for single des key (double the key)
+                KeyData objKEY_AES_CAR = new KeyData();
+                SecretKeySpec secretKeySpecAES = new SecretKeySpec(APPLICATION_KEY_CAR_AES, "AES");
+                objKEY_AES_CAR.setKey(secretKeySpecAES);
+
+                int keyNumberToChange = APPLICATION_KEY_CAR_NUMBER;
+                byte newKeyVersion = 0;
+                try {
+
+                    EV1KeySettings keySettings = desFireEV3.getKeySettings();
+                    writeToUiAppend(output, "keySettings: " + keySettings.toString());
+
+
+
+                    writeToUiAppend(output, "going to change key 02 from DES to AES");
+                    authStatus = desFireEV3.getAuthStatus();
+                    writeToUiAppend(output, "authStatus2: " + authStatus);
+                    writeToUiAppend(output, printData("APPLICATION_KEY_CAR_DEFAULT2", APPLICATION_KEY_CAR_DEFAULT2));
+                    writeToUiAppend(output, printData("APPLICATION_KEY_CAR_AES", APPLICATION_KEY_CAR_AES));
+
+                    EV2PICCConfigurationSettings piccKeySettings = new EV2PICCConfigurationSettings();
+                    piccKeySettings.setAppDefaultKey(SampleAppKeys.KEY_AES128_PICC_APP_DEFAULT_KEY, (byte)1);
+
+
+                    //EV3PICCConfigurationSettings piccKeySettings = new EV3PICCConfigurationSettings();
+                    EV3ApplicationKeySettings.Builder ev3ApplicationKeySettings = new EV3ApplicationKeySettings.Builder();
+
+                    desFireEV3.changeKey(keyNumberToChange, KeyType.AES128, APPLICATION_KEY_CAR_DEFAULT2, APPLICATION_KEY_CAR_AES, newKeyVersion);
+                    writeToUiAppend(output, "change key 02 from DES to AES done");
+                    authStatus = desFireEV3.getAuthStatus();
+                    writeToUiAppend(output, "authStatus3: " + authStatus);
+
+
+                } catch (SecurityException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    writeToUiAppend(output, "IOException occurred... check LogCat");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+/*
+https://github.com/dfpalomar/TapLinxSample/blob/master/src/main/java/com/nxp/sampletaplinx/MainActivity.java
+
+https://github.com/RfidResearchGroup/proxmark3/blob/master/doc/desfire.md
+
+void changeKey(int cardkeyNumber,
+               KeyType keyType,
+               byte[] oldKey,
+               byte[] newKey,
+               byte newKeyVersion)
+This method allows to change any key stored on the PICC. If the AID 0x00 is selected (PICC level ), the change applies to the PICC Master Key. As only one PICC Master key is stored on MIFARE DESFire EV1. In all other cases (if the selected AID is not 0x00 ) the change applies to the specified KeyNo within the currently selected application ( represented by it's AID ). On Application level ( the selected AID is not 0x00) it is not possible to change key after application creation. NOTE: oldkey and newKey is taken as byte array instead of IKeyData.This is because changing the the Key in the card require actual key bytes. IKeyData represents the secure key object which may be in the secure environment [ like HSM (Hardware secure module)] where we cant get the key contents always.
+
+Parameters:
+cardkeyNumber - key number to change.
+keyType - Key type of the new Key
+oldKey - old key of length 16/24 bytes depends on key type.
+if type is AES128 then, key length should be 16 bytes.
+if type is THREEDES then, [0 to 7 ] equal to [ 8 to 15 ] bytes of the 16 byte key.
+if type is TWO_KEY_THREEDES then, [0 to 7 ] not equal to [ 8 to 15 ] bytes of the 16 byte key.
+if type is THREE_KEY_THREEDES then, key data should be 24 bytes but key data not necessarily follow the pattern explained for THREEDES, TWO_KEY_THREEDES
+newKey - new key of length 16/24 bytes depends on key type.
+if type is AES128 then, key length should be 16 bytes.
+if type is THREEDES then, [0 to 7 ] equal to [ 8 to 15 ] bytes of the 16 byte key.
+if type is TWO_KEY_THREEDES then, [0 to 7 ] not equal to [ 8 to 15 ] bytes of the 16 byte key.
+if type is THREE_KEY_THREEDES then, key data should be 24 bytes but key data not necessarily follow the pattern explained for THREEDES, TWO_KEY_THREEDES
+newKeyVersion - new key version byte.
+ */
+            }
+        });
+
 
     }
+
 
     /**
      * DESFire Pre Conditions.
@@ -433,7 +561,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         try {
             desFireEV2.getReader().setTimeout(timeOut);
             writeToUiAppend(output, "Version of the Card : "
-                            + Utilities.dumpBytes(desFireEV2.getVersion()));
+                    + Utilities.dumpBytes(desFireEV2.getVersion()));
             desFireEV2.selectApplication(0); // todo run this before get applications
 
             writeToUiAppend(output,
@@ -558,8 +686,6 @@ newKeyVersion - new key version byte.
     }
 
 
-
-
     private void cardLogic(final Tag tag) {
         CardType type = CardType.UnknownCard;
         try {
@@ -664,7 +790,38 @@ newKeyVersion - new key version byte.
 
     }
 
+    /**
+     * section for sample keys
+     */
 
+    private void initializeKeys() {
+        KeyInfoProvider infoProvider = KeyInfoProvider.getInstance(getApplicationContext());
+
+        SharedPreferences sharedPrefs = getPreferences(Context.MODE_PRIVATE);
+        boolean keysStoredFlag = sharedPrefs.getBoolean(EXTRA_KEYS_STORED_FLAG, false);
+        if (!keysStoredFlag) {
+            //Set Key stores the key in persistent storage, this method can be called only once if key for a given alias does not change.
+            byte[] ulc24Keys = new byte[24];
+            System.arraycopy(SampleAppKeys.KEY_2KTDES_ULC, 0, ulc24Keys, 0, SampleAppKeys.KEY_2KTDES_ULC.length);
+            System.arraycopy(SampleAppKeys.KEY_2KTDES_ULC, 0, ulc24Keys, SampleAppKeys.KEY_2KTDES_ULC.length, 8);
+            infoProvider.setKey(ALIAS_KEY_2KTDES_ULC, SampleAppKeys.EnumKeyType.EnumDESKey, ulc24Keys);
+
+            infoProvider.setKey(ALIAS_KEY_2KTDES, SampleAppKeys.EnumKeyType.EnumDESKey, SampleAppKeys.KEY_2KTDES);
+            infoProvider.setKey(ALIAS_KEY_AES128, SampleAppKeys.EnumKeyType.EnumAESKey, SampleAppKeys.KEY_AES128);
+            infoProvider.setKey(ALIAS_KEY_AES128_ZEROES, SampleAppKeys.EnumKeyType.EnumAESKey, SampleAppKeys.KEY_AES128_ZEROS);
+            infoProvider.setKey(ALIAS_DEFAULT_FF, SampleAppKeys.EnumKeyType.EnumMifareKey, SampleAppKeys.KEY_DEFAULT_FF);
+
+            sharedPrefs.edit().putBoolean(EXTRA_KEYS_STORED_FLAG, true).commit();
+            //If you want to store a new key after key initialization above, kindly reset the flag EXTRA_KEYS_STORED_FLAG to false in shared preferences.
+        }
+
+
+        objKEY_2KTDES_ULC = infoProvider.getKey(ALIAS_KEY_2KTDES_ULC, SampleAppKeys.EnumKeyType.EnumDESKey);
+        objKEY_2KTDES = infoProvider.getKey(ALIAS_KEY_2KTDES, SampleAppKeys.EnumKeyType.EnumDESKey);
+        objKEY_AES128 = infoProvider.getKey(ALIAS_KEY_AES128, SampleAppKeys.EnumKeyType.EnumAESKey);
+        default_zeroes_key = infoProvider.getKey(ALIAS_KEY_AES128_ZEROES, SampleAppKeys.EnumKeyType.EnumAESKey);
+        default_ff_key = infoProvider.getMifareKey(ALIAS_DEFAULT_FF);
+    }
 
 
     /**
