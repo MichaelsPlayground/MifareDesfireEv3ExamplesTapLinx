@@ -30,7 +30,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="10dp"
-                android:text="Mifare DESFire EV3 Examples DES using TapLinx"
+                android:text="Mifare DESFire EV3 Examples AES using TapLinx"
                 android:textAlignment="center"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -1622,12 +1622,44 @@
                         android:text="Auth A20" />
 
                     <Button
-                        android:id="@+id/btnChangeKeyA21"
+                        android:id="@+id/btnGetKeyVersionKeyA20"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="8dp"
                         android:layout_weight="1"
+                        android:text="KV A20 VC C" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnChangeKeyA21"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginRight="8dp"
+                        android:layout_weight="1"
                         android:text="A21 VC P" />
+
+                    <Button
+                        android:id="@+id/btnAuthA21"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:layout_marginRight="8dp"
+                        android:layout_weight="1"
+                        android:text="Auth A21" />
+
+                    <Button
+                        android:id="@+id/btnGetKeyVersionKeyA21"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:layout_weight="1"
+                        android:text="KV A21 VC P" />
 
                 </LinearLayout>
 

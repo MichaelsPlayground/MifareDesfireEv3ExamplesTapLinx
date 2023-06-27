@@ -1,6 +1,6 @@
 # TapLinx Example
 
-Source: https://github.com/MichaelsPlayground/TapLinxSample
+Source: https://github.com/MichaelsPlayground/MifareDesfireEv3ExamplesAesTapLinx
 
 Firebase Analytics: Michael Fehr fb.samples.2022@gmail.com
 

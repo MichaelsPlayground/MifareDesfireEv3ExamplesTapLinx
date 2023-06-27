@@ -228,7 +228,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     // virtual card key handling
     //private Button authKeyAM0; // M0 is the Master Application Key AES
-    private Button changeKeyVc20, authKeyVc20, changeKeyVc21;
+    private Button changeKeyVc20, authKeyVc20, changeKeyVc21, authKeyVc21;
+    private Button keyVersionKeyVc20, keyVersionKeyVc21;
 
     // changed keys
     private Button changeKeyDM0C, changeKeyD0C, changeKeyD1C, changeKeyD2C, changeKeyD3C, changeKeyD4C;
@@ -269,12 +270,14 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private final byte[] APPLICATION_KEY_W = Utils.hexStringToByteArray("D400000000000000");
     private final byte APPLICATION_KEY_W_NUMBER = (byte) 0x04;
 
-    private final byte[] VIRTUAL_CARD_KEY_CONFIG_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final byte[] VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
     private final byte[] VIRTUAL_CARD_KEY_CONFIG = Utils.hexStringToByteArray("20200000000000000000000000000000");
-    private final byte VIRTUAL_CARD_KEY_CONFIG_NUMBER = (byte) 0x20;
-    private final byte[] VIRTUAL_CARD_KEY_PROXIMITY_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final int VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT = 32; // 0x20
+    private final byte VIRTUAL_CARD_CONFIG_KEY_VERSION = 0;
+    private final byte[] VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
     private final byte[] VIRTUAL_CARD_KEY_PROXIMITY = Utils.hexStringToByteArray("20200000000000000000000000000000");
-    private final byte VIRTUAL_CARD_KEY_PROXIMITY_NUMBER = (byte) 0x21;
+    private final int VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT = 33; // 0x21
+    private final byte VIRTUAL_CARD_PROXIMITY_KEY_VERSION = 0;
 
     private final byte[] APPLICATION_KEY_CAR_AES = Utils.hexStringToByteArray("A2000000000000000000000000000000");
 
@@ -422,7 +425,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         changeKeyVc20 = findViewById(R.id.btnChangeKeyA20);
         authKeyAM0 = findViewById(R.id.btnAuthAM0);
         authKeyVc20 = findViewById(R.id.btnAuthA20);
+        keyVersionKeyVc20 = findViewById(R.id.btnGetKeyVersionKeyA20);
         changeKeyVc21 = findViewById(R.id.btnChangeKeyA21);
+        authKeyVc21 = findViewById(R.id.btnAuthA21);
+        keyVersionKeyVc21 = findViewById(R.id.btnGetKeyVersionKeyA21);
 
         // now with changed keys
         changeKeyDM0C = findViewById(R.id.btnChangeKeyDM0C);
@@ -644,6 +650,38 @@ Response received : 00000A002525C5AF6CE39963
             }
         });
 
+        authKeyVc20.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Key 32 = VirtualCard Configuration key
+                clearOutputFields();
+                writeToUiAppend(output, "legacy AES authentication with AES Key 32 = VirtualCard Configuration key");
+                boolean success = legacyAesAuth(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "legacy AES authentication with VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy AES auth with VC Config key (AES default) SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy AES auth with VC Config key (AES default) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authKeyVc21.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Key 33 = VirtualCard Proximity key
+                clearOutputFields();
+                writeToUiAppend(output, "legacy AES authentication with AES Key 33 = VirtualCard Proximity key");
+                boolean success = legacyAesAuth(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT, VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "legacy AES authentication with VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy AES auth with VC Proximity key (AES default) SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy AES auth with VC Proximity key (AES default) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
 
         changeKeyD2.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -787,8 +825,7 @@ newKeyVersion - new key version byte.
                                 } catch (UsageException e) {
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
-                                } catch (
-                                        SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
                                 } catch (PICCException e) {
@@ -826,7 +863,180 @@ newKeyVersion - new key version byte.
             }
         });
 
+        changeKeyVc20.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // change the VirtualCard Configuration Key (0x20)
+                clearOutputFields();
+                writeToUiAppend(output, "change the VirtualCard Configuration Key (0x20) to the default AES key");
+                // open a confirmation dialog
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                //Yes button clicked
+                                try {
+                                    writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                                    desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
+                                    //writeToUiAppend(output, "PICC configuration settings, new key version: " + MASTER_APPLICATION_KEY_VERSION + printData(" key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    //EV3PICCConfigurationSettings piccKeySettings = new EV3PICCConfigurationSettings();
+                                    //piccKeySettings.setAppDefaultKey(MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
+                                    writeToUiAppend(output, "auth the Master Application with the AES default key: " + printData("default key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    KeyData keyData = getAesKeyFromByteArray(MASTER_APPLICATION_KEY_AES_DEFAULT);
+                                    byte[] keyDataBytes = keyData.getKey().getEncoded();
+                                    writeToUiAppend(output, "keyData of the AES default key: " + printData("keyData", keyDataBytes));
+                                    writeToUiAppend(output, "auth the Master Application with keyNumber: " + MASTER_APPLICATION_KEY_NUMBER + " using AES auth");
+                                    desFireEV3.authenticate(MASTER_APPLICATION_KEY_NUMBER, IDESFireEV3.AuthType.AES, KeyType.AES128, keyData);
+                                    //writeToUiAppend(output, "set the configuration byte (PICC key settings)");
+                                    //desFireEV3.setConfigurationByte(piccKeySettings);
+                                    writeToUiAppend(output, "change the VirtualCard Configuration Key (0x20): " + VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT);
+                                    desFireEV3.changePICCKeys(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, KeyType.AES128, VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT, VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT, VIRTUAL_CARD_CONFIG_KEY_VERSION);
+                                    writeToUiAppend(output, "change of the VirtualCard Configuration Key (0x20) done," + printData("new key", VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT));
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change VirtualCard Configuration Key (0x20) success", COLOR_GREEN);
+
+
+                                } catch (InvalidResponseLengthException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (UsageException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (
+                                        SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (PICCException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (Exception e) {
+                                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                }
+                                break;
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                //No button clicked
+                                // nothing to do
+                                writeToUiAppend(output, "change of the VirtualCard Configuration Key (0x20) aborted");
+                                break;
+                        }
+                    }
+                };
+                final String selectedFolderString = "You are going to change the VirtualCard Configuration Key to AES default key." + "\n\n" +
+                        "Do you want to proceed ?";
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                builder.setMessage(selectedFolderString).setPositiveButton(android.R.string.yes, dialogClickListener)
+                        .setNegativeButton(android.R.string.no, dialogClickListener)
+                        .setTitle("CHANGE the VirtualCard Configuration Key to AES")
+                        .show();
+            }
+        });
+
+        changeKeyVc21.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // change the VirtualCard Proximity Key (0x21)
+                clearOutputFields();
+                writeToUiAppend(output, "change the VirtualCard Proximity Key (0x21) to the default AES key");
+                // open a confirmation dialog
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                //Yes button clicked
+                                try {
+                                    writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                                    desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
+                                    //writeToUiAppend(output, "PICC configuration settings, new key version: " + MASTER_APPLICATION_KEY_VERSION + printData(" key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    //EV3PICCConfigurationSettings piccKeySettings = new EV3PICCConfigurationSettings();
+                                    //piccKeySettings.setAppDefaultKey(MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
+                                    writeToUiAppend(output, "auth the Master Application with the AES default key: " + printData("default key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    KeyData keyData = getAesKeyFromByteArray(MASTER_APPLICATION_KEY_AES_DEFAULT);
+                                    byte[] keyDataBytes = keyData.getKey().getEncoded();
+                                    writeToUiAppend(output, "keyData of the AES default key: " + printData("keyData", keyDataBytes));
+                                    writeToUiAppend(output, "auth the Master Application with keyNumber: " + MASTER_APPLICATION_KEY_NUMBER + " using AES auth");
+                                    desFireEV3.authenticate(MASTER_APPLICATION_KEY_NUMBER, IDESFireEV3.AuthType.AES, KeyType.AES128, keyData);
+                                    // now that we are authenticated we need a second authentication with VC Configuration Key
+                                    writeToUiAppend(output, "auth the VirtualCard Config with the AES default key: " + printData("default key", VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT));
+                                    keyData = getAesKeyFromByteArray(VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT);
+                                    keyDataBytes = keyData.getKey().getEncoded();
+                                    writeToUiAppend(output, "keyData of the AES default key: " + printData("keyData", keyDataBytes));
+                                    writeToUiAppend(output, "auth the VirtualCard Config with keyNumber: " + VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT + " using AES auth");
+                                    desFireEV3.authenticate(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, IDESFireEV3.AuthType.AES, KeyType.AES128, keyData);
+                                    writeToUiAppend(output, "change the VirtualCard Proximity Key (0x21): " + VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT);
+                                    desFireEV3.changePICCKeys(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT, KeyType.AES128, VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT, VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT, VIRTUAL_CARD_PROXIMITY_KEY_VERSION);
+                                    writeToUiAppend(output, "change of the VirtualCard Proximity Key (0x21) done," + printData("new key", VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT));
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change VirtualCard Proximity Key (0x21) success", COLOR_GREEN);
+                                } catch (InvalidResponseLengthException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (UsageException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (
+                                        SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (PICCException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (Exception e) {
+                                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                }
+                                break;
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                //No button clicked
+                                // nothing to do
+                                writeToUiAppend(output, "change of the VirtualCard Proximity Key (0x21) aborted");
+                                break;
+                        }
+                    }
+                };
+                final String selectedFolderString = "You are going to change the VirtualCard Proximity Key to AES default key." + "\n\n" +
+                        "Do you want to proceed ?";
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                builder.setMessage(selectedFolderString).setPositiveButton(android.R.string.yes, dialogClickListener)
+                        .setNegativeButton(android.R.string.no, dialogClickListener)
+                        .setTitle("CHANGE the VirtualCard Proximity Key to AES")
+                        .show();
+            }
+        });
+
+        keyVersionKeyVc20.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // gets the key version of the VirtualCard Configuration key (0x20)
+                clearOutputFields();
+                writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
+                int keyVersion = getKeyVersion(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT);
+                writeToUiAppend(output, "The key version for key " + VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT + " is " + keyVersion);
+            }
+        });
+
+        keyVersionKeyVc21.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // gets the key version of the VirtualCard Proximity key (0x21)
+                clearOutputFields();
+                writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
+                int keyVersion = getKeyVersion(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT);
+                writeToUiAppend(output, "The key version for key " + VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT + " is " + keyVersion);
+            }
+        });
+
+
+
     }
+
+
 
     /**
      * section for authentication
@@ -909,6 +1119,11 @@ newKeyVersion - new key version byte.
 
         EV3ApplicationKeySettings appsettings = appsetbuilder.build();
         return appsettings;
+    }
+
+    private int getKeyVersion(int keyNumber) {
+        int keyVersion = desFireEV3.getKeyVersionFor(32);
+        return keyVersion;
     }
 
 
