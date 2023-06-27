@@ -51,9 +51,11 @@ import com.nxp.nfclib.utils.Utilities;
 
 import java.io.File;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -64,6 +66,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class MainActivity extends AppCompatActivity implements NfcAdapter.ReaderCallback {
 
+    private static final String TAG = MainActivity.class.getName();
 
     /**
      * Package Key.
@@ -201,13 +204,20 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button fileStandardCreateEnc, fileStandardWriteEnc, manualEncryption;
 
     /**
-     * section for authentication
+     * section for DES authentication
      */
 
     private Button authKeyDM0, authKeyD0, authKeyD1, authKeyD2, authKeyD3, authKeyD4; // M0 is the Master Application Key
 
     // changed keys
     private Button authKeyDM0C, authKeyD0C, authKeyD1C, authKeyD2C, authKeyD3C, authKeyD4C; // M0 is the Master Application Key
+
+    /**
+     * section for AES authentication
+     */
+
+    private Button authKeyAM0, authKeyA0, authKeyA1, authKeyA2, authKeyA3, authKeyA4; // M0 is the Master Application Key
+    private Button authKeyAM0Ev2;
 
 
     /**
@@ -217,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button changeKeyDM0, changeKeyD0, changeKeyD1, changeKeyD2, changeKeyD3, changeKeyD4;
 
     // virtual card key handling
-    private Button authKeyAM0; // M0 is the Master Application Key AES
+    //private Button authKeyAM0; // M0 is the Master Application Key AES
     private Button changeKeyVc20, authKeyVc20, changeKeyVc21;
 
     // changed keys
@@ -243,6 +253,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private final byte APPLICATION_MASTER_KEY_SETTINGS = (byte) 0x0f; // amks
     private final byte KEY_NUMBER_RW = (byte) 0x01;
     private final byte[] APPLICATION_KEY_RW_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_RW_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000"); // default AES key with 16 nulls
     private final byte[] APPLICATION_KEY_RW = Utils.hexStringToByteArray("D100000000000000");
     private final byte APPLICATION_KEY_RW_NUMBER = (byte) 0x01;
     private final byte[] APPLICATION_KEY_CAR_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
@@ -389,6 +400,16 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         authKeyD3C = findViewById(R.id.btnAuthD3C);
         authKeyD4C = findViewById(R.id.btnAuthD4C);
 
+        // AES authentication handling
+        authKeyAM0 = findViewById(R.id.btnAuthAM0);
+        authKeyA0 = findViewById(R.id.btnAuthA0);
+        authKeyA1 = findViewById(R.id.btnAuthA1);
+        authKeyA2 = findViewById(R.id.btnAuthA2);
+        authKeyA3 = findViewById(R.id.btnAuthA3);
+        authKeyA4 = findViewById(R.id.btnAuthA4);
+        authKeyAM0Ev2 = findViewById(R.id.btnAuthAM0Ev2);
+
+
         // key handling
         changeKeyDM0 = findViewById(R.id.btnChangeKeyDM0);
         changeKeyD0 = findViewById(R.id.btnChangeKeyD0);
@@ -428,7 +449,200 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
 
+        applicationCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // create a new application
+                clearOutputFields();
+                writeToUiAppend(output, "create a new application");
+                int numberOfKeysInt = Integer.parseInt(numberOfKeys.getText().toString());
+                byte[] applicationIdentifier = Utils.hexStringToByteArray(applicationId.getText().toString());
+                if (applicationIdentifier == null) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong application ID", COLOR_RED);
+                    return;
+                }
+                if ((numberOfKeysInt < 0) || (numberOfKeysInt > 14)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong number of keys (range 1..14)", COLOR_RED);
+                    return;
+                }
+                //int appIdInt = Utilities.bytesToInt(applicationIdentifier);
+                //writeToUiAppend(output, "appId as Integer: " + appIdInt);
+                EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(applicationIdentifier, numberOfKeysInt);
+                try {
+                    // important: first select the  Master Application ('0')
+                    desFireEV3.selectApplication(0);
+                    // depending on MasterKey settings an authentication is necessary, skipped here
+                    desFireEV3.createApplication(applicationIdentifier, applicationKeySettings);
+                    writeToUiAppend(output, "create a new application done," + printData("new appID", applicationIdentifier));
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change MasterApplicationKey success", COLOR_GREEN);
+                } catch (InvalidResponseLengthException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (UsageException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+            }
+        });
 
+
+        applicationSelect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // get all applications and show them in a listview for selection
+                clearOutputFields();
+                writeToUiAppend(output, "select an application");
+                String[] applicationList;
+
+                try {
+                    // first select Master Application
+                    desFireEV3.selectApplication(0); // todo run this before get applications
+                    int[] desfireApplicationIdIntArray = desFireEV3.getApplicationIDs();
+                    applicationList = new String[desfireApplicationIdIntArray.length];
+                    for (int i = 0; i < desfireApplicationIdIntArray.length; i++) {
+                        applicationList[i] = Utilities.byteToHexString(Utilities.intToBytes(desfireApplicationIdIntArray[i], 3));
+                    }
+                } catch (InvalidResponseLengthException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (UsageException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (PICCException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (Exception e) {
+                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                }
+
+                // setup the alert builder
+                AlertDialog.Builder builder = new AlertDialog.Builder(view.getContext());
+                builder.setTitle("Choose an application");
+
+                // add a list
+                //String[] animals = {"horse", "cow", "camel", "sheep", "goat"};
+                //builder.setItems(animals, new DialogInterface.OnClickListener() {
+                builder.setItems(applicationList, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        writeToUiAppend(output, "you  selected nr " + which + " = " + applicationList[which]);
+                        boolean dfSelectApplication = false;
+                        try {
+                            byte[] aid = Utilities.stringToBytes(applicationList[which]);
+                            //byte[] aid = Utils.hexStringToByteArray(applicationList[which]);
+                            int aidInt = Utilities.bytesToInt(aid);
+                            desFireEV3.selectApplication(aidInt);
+                            selectedApplicationId = aid.clone();
+                            applicationSelected.setText(applicationList[which]);
+                            selectedFileId = "";
+                            fileSelected.setText("");
+                            writeToUiAppend(output, "selectApplication SUCCESS, selected AID: " + applicationList[which]);
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "selectApplication SUCCESS", COLOR_GREEN);
+                        } catch (InvalidResponseLengthException e) {
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                            e.printStackTrace();
+                            return;
+                        } catch (UsageException e) {
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                            e.printStackTrace();
+                            return;
+                        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                            e.printStackTrace();
+                            return;
+                        } catch (PICCException e) {
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                            e.printStackTrace();
+                            return;
+                        } catch (Exception e) {
+                            writeToUiAppend(output, "Exception occurred... check LogCat");
+                            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                            e.printStackTrace();
+                            return;
+                        }
+                    }
+                });
+                // create and show the alert dialog
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            }
+        });
+
+
+        authKeyAM0.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Master Application Key
+                clearOutputFields();
+                writeToUiAppend(output, "legacy authentication with AES Master Application Key");
+                boolean success = legacyAesAuth(MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "legacy authentication with MASTER_APPLICATION_KEY_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with MasterApplicationKey (AES default) SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with MasterApplicationKey (AES default) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authKeyA1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Key 1 = Read & Write Access key
+                clearOutputFields();
+                writeToUiAppend(output, "legacy authentication with AES Key 1 = Read & Write Access key");
+                boolean success = legacyAesAuth(APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "legacy authentication with APPLICATION_KEY_RW_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES default) SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES default) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authKeyAM0Ev2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // new EV2First authentication with AES Master Application Key
+                clearOutputFields();
+                writeToUiAppend(output, "new EV2First authentication with AES Master Application Key");
+                boolean success = newAesEv2Auth(MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "new EV2First authentication with MASTER_APPLICATION_KEY_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "new EV2First auth with MasterApplicationKey (AES default) SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "new EV2First auth with MasterApplicationKey (AES default) NO SUCCESS", COLOR_RED);
+                }
+/*
+new AES EV2First auth and secure messaging
+Authenticate EV2 First Command : 710006000000000000
+Authenticate EV2 First Command Response : 1E4ED24D113209311EF9DE00977D354A
+Command sent to card : 6E4B66EC7DFD37438E
+Response received : 00000A002525C5AF6CE39963
+ */
+            }
+        });
 
 
         changeKeyD2.setOnClickListener(new View.OnClickListener() {
@@ -471,7 +685,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppend(output, "keySettings: " + keySettings.toString());
 
 
-
                     writeToUiAppend(output, "going to change key 02 from DES to AES");
                     authStatus = desFireEV3.getAuthStatus();
                     writeToUiAppend(output, "authStatus2: " + authStatus);
@@ -479,7 +692,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppend(output, printData("APPLICATION_KEY_CAR_AES", APPLICATION_KEY_CAR_AES));
 
                     EV2PICCConfigurationSettings piccKeySettings = new EV2PICCConfigurationSettings();
-                    piccKeySettings.setAppDefaultKey(SampleAppKeys.KEY_AES128_PICC_APP_DEFAULT_KEY, (byte)1);
+                    piccKeySettings.setAppDefaultKey(SampleAppKeys.KEY_AES128_PICC_APP_DEFAULT_KEY, (byte) 1);
 
 
                     //EV3PICCConfigurationSettings piccKeySettings = new EV3PICCConfigurationSettings();
@@ -550,7 +763,6 @@ newKeyVersion - new key version byte.
                         switch (which) {
                             case DialogInterface.BUTTON_POSITIVE:
                                 //Yes button clicked
-                                boolean success;
                                 try {
                                     writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
                                     desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
@@ -566,16 +778,17 @@ newKeyVersion - new key version byte.
                                     writeToUiAppend(output, "set the configuration byte (PICC key settings)");
                                     desFireEV3.setConfigurationByte(piccKeySettings);
                                     writeToUiAppend(output, "change the Master Application key: " + MASTER_APPLICATION_IDENTIFIER_INT);
-                                    desFireEV3.changeKey(MASTER_APPLICATION_KEY_NUMBER, KeyType.AES128, MDES_DEFAULT_KEY_TDES, MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
-
-
+                                    desFireEV3.changeKey(MASTER_APPLICATION_KEY_NUMBER, KeyType.AES128, MASTER_APPLICATION_KEY_DES_DEFAULT, MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
+                                    writeToUiAppend(output, "change of the Master Application Key done," + printData("new key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change MasterApplicationKey success", COLOR_GREEN);
                                 } catch (InvalidResponseLengthException e) {
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
                                 } catch (UsageException e) {
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
-                                } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                } catch (
+                                        SecurityException e) { // don't use the java Security Exception but the  NXP one
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
                                 } catch (PICCException e) {
@@ -614,6 +827,90 @@ newKeyVersion - new key version byte.
         });
 
     }
+
+    /**
+     * section for authentication
+     */
+
+    private boolean legacyAesAuth(int keyNumber, byte[] keyToAuthenticate) {
+        try {
+            Log.d(TAG, "Authentication with AES legacy");
+            writeToUiAppend(output, "AES legacy auth");
+            SecretKey originalKey = new SecretKeySpec(keyToAuthenticate, 0, keyToAuthenticate.length, "AES");
+            KeyData keyData = new KeyData();
+            keyData.setKey(originalKey);
+            desFireEV3.authenticate(keyNumber, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            writeToUiAppend(output, "Exception occurred... check LogCat");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean newAesEv2Auth(int keyNumber, byte[] keyToAuthenticate) {
+        Log.d(TAG, "Authentication with AES EV2First");
+        try {
+            writeToUiAppend(output, "new AES EV2First auth and secure messaging");
+            SecretKey originalKey = new SecretKeySpec(keyToAuthenticate, 0, keyToAuthenticate.length, "AES");
+            KeyData keyData = new KeyData();
+            keyData.setKey(originalKey);
+            byte[] pCDcap2 = new byte[]{0, 0, 0, 0, 0, 0};
+            desFireEV3.authenticateEV2First(keyNumber, keyData, pCDcap2);
+            desFireEV3.getFreeMemory();
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            writeToUiAppend(output, "Exception occurred... check LogCat");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * section for helper methods
+     */
+
+    private EV3ApplicationKeySettings getApplicationSettingsDefault(byte[] appId, int numberOfApplicationKeys) {
+        Log.d(TAG, "Creating default application settings");
+        EV3ApplicationKeySettings.Builder appsetbuilder = new EV3ApplicationKeySettings.Builder();
+        appsetbuilder
+                .setAppKeySettingsChangeable(true)
+                .setAppMasterKeyChangeable(true)
+                .setAuthenticationRequiredForFileManagement(false)
+                .setAuthenticationRequiredForDirectoryConfigurationData(false)
+                .setKeyTypeOfApplicationKeys(KeyType.AES128)
+                .setMaxNumberOfApplicationKeys(numberOfApplicationKeys);
+
+        EV3ApplicationKeySettings appsettings = appsetbuilder.build();
+        return appsettings;
+    }
+
 
     /**
      * section for key conversion
