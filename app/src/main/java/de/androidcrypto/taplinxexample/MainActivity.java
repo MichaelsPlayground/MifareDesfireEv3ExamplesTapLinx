@@ -2,6 +2,7 @@ package de.androidcrypto.taplinxexample;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -22,6 +23,7 @@ import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -34,22 +36,28 @@ import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.EV1KeySettings;
 import com.nxp.nfclib.desfire.EV2PICCConfigurationSettings;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
+import com.nxp.nfclib.desfire.EV3PICCConfigurationSettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
 import com.nxp.nfclib.desfire.IDESFireEV2;
 import com.nxp.nfclib.desfire.IDESFireEV3;
+import com.nxp.nfclib.exceptions.InvalidResponseLengthException;
 import com.nxp.nfclib.exceptions.NxpNfcLibException;
 import com.nxp.nfclib.exceptions.PICCException;
+import com.nxp.nfclib.exceptions.SecurityException;
+import com.nxp.nfclib.exceptions.UsageException;
 import com.nxp.nfclib.interfaces.IKeyData;
 import com.nxp.nfclib.utils.NxpLogUtils;
 import com.nxp.nfclib.utils.Utilities;
 
 import java.io.File;
+
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -127,6 +135,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     private LinearLayout llGeneralWorkflow;
     private Button tagVersion, keySettings, freeMemory, formatPicc, selectMasterApplication;
+    private Button formatPiccTaplinx, changeMasterKeyToAes;
 
     /**
      * section for application handling
@@ -216,12 +225,18 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     // constants
     private final byte[] MASTER_APPLICATION_IDENTIFIER = new byte[3]; // '00 00 00'
+    private final int MASTER_APPLICATION_IDENTIFIER_INT = 0;
     private final byte[] MASTER_APPLICATION_KEY_DEFAULT = Utils.hexStringToByteArray("0000000000000000");
+    private final byte[] MASTER_APPLICATION_KEY_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000");
     private final byte[] MASTER_APPLICATION_KEY_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
     private final byte[] MASTER_APPLICATION_KEY = Utils.hexStringToByteArray("DD00000000000000");
     private final byte MASTER_APPLICATION_KEY_NUMBER = (byte) 0x00;
+    private final byte MASTER_APPLICATION_KEY_VERSION = (byte) 0x00;
     private final byte[] APPLICATION_ID_DES = Utils.hexStringToByteArray("A1A2A3");
     private final byte[] DES_DEFAULT_KEY = new byte[8];
+    private final byte[] DES_DEFAULT_KEY_TDES = new byte[16];
+    private final byte[] DES_DEFAULT_KEY_2KTDES = new byte[24];
+
     private final byte[] APPLICATION_KEY_MASTER_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
     private final byte[] APPLICATION_KEY_MASTER = Utils.hexStringToByteArray("D000000000000000");
     private final byte APPLICATION_KEY_MASTER_NUMBER = (byte) 0x00;
@@ -290,6 +305,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         freeMemory = findViewById(R.id.btnGetFreeMemory);
         formatPicc = findViewById(R.id.btnFormatPicc);
         selectMasterApplication = findViewById(R.id.btnSelectMasterApplication);
+        formatPiccTaplinx = findViewById(R.id.btnFormatPiccTaplinx);
+        changeMasterKeyToAes = findViewById(R.id.btnChangeMasterKeyToAes);
 
         // application handling
         llApplicationHandling = findViewById(R.id.llApplications);
@@ -410,6 +427,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
+
+
+
+
         changeKeyD2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -512,8 +533,105 @@ newKeyVersion - new key version byte.
         });
 
 
+        /**
+         * this method will format the card and change the Master Application Key to an AES default key
+         */
+
+        changeMasterKeyToAes.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // change the Master Application key 0x00 to the AES default key
+                clearOutputFields();
+                writeToUiAppend(output, "change the Master Application Key to the default AES key");
+                // open a confirmation dialog
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                //Yes button clicked
+                                boolean success;
+                                try {
+                                    writeToUiAppend(output, "select the Master Application: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                                    desFireEV3.selectApplication(MASTER_APPLICATION_IDENTIFIER_INT);
+                                    writeToUiAppend(output, "PICC configuration settings, new key version: " + MASTER_APPLICATION_KEY_VERSION + printData(" key", MASTER_APPLICATION_KEY_AES_DEFAULT));
+                                    EV3PICCConfigurationSettings piccKeySettings = new EV3PICCConfigurationSettings();
+                                    piccKeySettings.setAppDefaultKey(MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
+                                    writeToUiAppend(output, "auth the Master Application with the old DES default key: " + printData("default key", DES_DEFAULT_KEY_TDES));
+                                    KeyData keyData = getDesKeyFromByteArray(DES_DEFAULT_KEY_TDES);
+                                    byte[] keyDataBytes = keyData.getKey().getEncoded();
+                                    writeToUiAppend(output, "keyData of the old DES default key: " + printData("keyData", keyDataBytes));
+                                    writeToUiAppend(output, "auth the Master Application with keyNumber: " + MASTER_APPLICATION_KEY_NUMBER + " using Native auth");
+                                    desFireEV3.authenticate(MASTER_APPLICATION_KEY_NUMBER, IDESFireEV3.AuthType.Native, KeyType.THREEDES, keyData);
+                                    writeToUiAppend(output, "set the configuration byte (PICC key settings)");
+                                    desFireEV3.setConfigurationByte(piccKeySettings);
+                                    writeToUiAppend(output, "change the Master Application key: " + MASTER_APPLICATION_IDENTIFIER_INT);
+                                    desFireEV3.changeKey(MASTER_APPLICATION_KEY_NUMBER, KeyType.AES128, MDES_DEFAULT_KEY_TDES, MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_VERSION);
+
+
+                                } catch (InvalidResponseLengthException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (UsageException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (PICCException e) {
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                } catch (Exception e) {
+                                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                                    e.printStackTrace();
+                                }
+                                break;
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                //No button clicked
+                                // nothing to do
+                                writeToUiAppend(output, "change of the MasterKey aborted");
+                                break;
+                        }
+                    }
+                };
+                final String selectedFolderString = "You are going to change the MasterKey to AES default key." + "\n\n" +
+                        "Do you want to proceed ?";
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+
+                builder.setMessage(selectedFolderString).setPositiveButton(android.R.string.yes, dialogClickListener)
+                        .setNegativeButton(android.R.string.no, dialogClickListener)
+                        .setTitle("CHANGE the MasterKey to AES")
+                        .show();
+        /*
+        If you want to use the "yes" "no" literals of the user's language you can use this
+        .setPositiveButton(android.R.string.yes, dialogClickListener)
+        .setNegativeButton(android.R.string.no, dialogClickListener)
+         */
+
+
+            }
+        });
+
     }
 
+    /**
+     * section for key conversion
+     */
+
+    private KeyData getDesKeyFromByteArray(byte[] desKeyBytes) {
+        SecretKey originalKey = new SecretKeySpec(desKeyBytes, 0, desKeyBytes.length, "DESede");
+        KeyData keyData = new KeyData();
+        keyData.setKey(originalKey);
+        return keyData;
+    }
+
+    private KeyData getAesKeyFromByteArray(byte[] aesKeyBytes) {
+        SecretKey originalKey = new SecretKeySpec(aesKeyBytes, 0, aesKeyBytes.length, "AES");
+        KeyData keyData = new KeyData();
+        keyData.setKey(originalKey);
+        return keyData;
+    }
 
     /**
      * DESFire Pre Conditions.
