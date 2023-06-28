@@ -32,6 +32,7 @@ import com.nxp.nfclib.CardType;
 import com.nxp.nfclib.KeyType;
 import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
+import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.EV1KeySettings;
 import com.nxp.nfclib.desfire.EV2PICCConfigurationSettings;
@@ -203,6 +204,14 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     private LinearLayout llStandardFileEnc;
     private Button fileStandardCreateEnc, fileStandardWriteEnc, manualEncryption;
+
+    /**
+     * work with transaction mac files - only available on EV2+
+     */
+
+    private LinearLayout llTMacFile;
+    private Button fileTMacCreate, fileTMacWrite, fileTMacRead;
+
 
     /**
      * section for DES authentication
@@ -388,6 +397,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         rbLinearRecordFile = findViewById(R.id.rbLinearRecordFile);
         rbCyclicRecordFile = findViewById(R.id.rbCyclicRecordFile);
 
+        // transaction mac file handling
+        llTMacFile = findViewById(R.id.llTransactionMacFile);
+        fileTMacCreate = findViewById(R.id.btnCreateTransactionMacFile);
+        fileTMacWrite = findViewById(R.id.btnWriteTransactionMacFile);
+        fileTMacRead = findViewById(R.id.btnReadTransactionMacFile);
+
         // encrypted standard file handling
         llStandardFileEnc = findViewById(R.id.llStandardFileEnc);
         fileStandardCreateEnc = findViewById(R.id.btnCreateStandardFileEnc);
@@ -499,7 +514,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 } catch (UsageException e) {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                     e.printStackTrace();
-                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                } catch (
+                        SecurityException e) { // don't use the java Security Exception but the NXP one
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                     e.printStackTrace();
                 } catch (PICCException e) {
@@ -538,7 +554,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                     e.printStackTrace();
                     return;
-                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                } catch (
+                        SecurityException e) { // don't use the java Security Exception but the NXP one
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                     e.printStackTrace();
                     return;
@@ -584,7 +601,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                             writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                             e.printStackTrace();
                             return;
-                        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                        } catch (
+                                SecurityException e) { // don't use the java Security Exception but the NXP one
                             writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                             e.printStackTrace();
                             return;
@@ -603,6 +621,73 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 // create and show the alert dialog
                 AlertDialog dialog = builder.create();
                 dialog.show();
+            }
+        });
+
+        /**
+         * section for transaction MAC files
+         * Note: this  is available on DESFire EV2+ cards and using AES keys in application
+         */
+
+        fileTMacCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // create a new transaction mac file
+                // get the input and sanity checks
+                clearOutputFields();
+                writeToUiAppend(output, "create a Transaction MAC file");
+                byte fileIdByte = (byte) (npRecordFileId.getValue() & 0xFF);
+                int fileIdInt = npRecordFileId.getValue();
+                // the number of files on an EV1 tag is limited to 32 (00..31), but we are using the limit for the old D40 tag with a maximum of 15 files (00..14)
+                // this limit is hardcoded in the XML file for the fileId numberPicker
+
+                if (fileIdByte > (byte) 0x0f) {
+                    // this should not happen as the limit is hardcoded in npFileId
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong file ID", COLOR_RED);
+                    return;
+                }
+                try {
+                    DESFireEV3File.EV3TransactionMacFileSettings ev3TransactionMacFileSettings = new DESFireEV3File.EV3TransactionMacFileSettings(
+                            IDESFireEV1.CommunicationType.Plain, // plain communication
+                            (byte) 0x03, (byte) 0x0F, (byte) 0x01, (byte) 0x02, // access keys for read, write (never), read&write, CAR
+                            (byte) 0x02, // keyOption 02 = AES
+                            (byte) 0x00 // key version
+                    );
+                    desFireEV3.createFile(fileIdInt, ev3TransactionMacFileSettings);
+                    writeToUiAppend(output, "Transaction MAC file created with fileId: " + fileIdInt);
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "create Transaction MAC file success", COLOR_GREEN);
+                    return;
+/*
+Command sent to card : 45
+Response received : 000F85F2E7A33CFB4A97F4
+Command sent to card : CE0000123F0230F82C20E85AC62404FD405B057D7512
+Response received : 7E
+ */
+                } catch (InvalidResponseLengthException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (UsageException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (
+                        SecurityException e) { // don't use the java Security Exception but the NXP one
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (PICCException e) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                } catch (Exception e) {
+                    writeToUiAppend(output, "Exception occurred... check LogCat");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                    return;
+                }
+
+                //desFireEV3.commitAndGetTransactionMac();
             }
         });
 
@@ -842,7 +927,8 @@ newKeyVersion - new key version byte.
                                 } catch (UsageException e) {
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
-                                } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+                                } catch (
+                                        SecurityException e) { // don't use the java Security Exception but the  NXP one
                                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
                                     e.printStackTrace();
                                 } catch (PICCException e) {
@@ -1061,13 +1147,13 @@ newKeyVersion - new key version byte.
                     //desFireEV3.proximityCheck(keyDataProx, numberOfProximityIterations); // not supported in desfireEV3
                     //writeToUiAppendBorderColor(errorCode, errorCodeLayout, "proximity check success", COLOR_GREEN);
 
-                    writeToUiAppend(output,"manual PC prepare");
+                    writeToUiAppend(output, "manual PC prepare");
                     byte prepareCheckCommand = (byte) 0xF0;
                     byte[] prepareCheckWrappedCommand = wrapMessage(prepareCheckCommand, null);
                     writeToUiAppend(output, printData("prepareCheckWrappedCommand", prepareCheckWrappedCommand));
                     byte[] resp = desFireEV3.getReader().transceive(prepareCheckWrappedCommand);
                     writeToUiAppend(output, printData("resp", resp));
-                    writeToUiAppend(output,"manual PC check");
+                    writeToUiAppend(output, "manual PC check");
 
 /*
 
@@ -1133,7 +1219,6 @@ newKeyVersion - new key version byte.
                 writeToUiAppend(output, "The key version for key " + VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT + " is " + keyVersion);
             }
         });
-
 
 
     }
