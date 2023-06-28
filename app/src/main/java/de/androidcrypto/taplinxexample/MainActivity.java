@@ -35,6 +35,7 @@ import com.nxp.nfclib.defaultimpl.KeyData;
 import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.EV1KeySettings;
+import com.nxp.nfclib.desfire.EV1PICCConfigurationSettings;
 import com.nxp.nfclib.desfire.EV2PICCConfigurationSettings;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
 import com.nxp.nfclib.desfire.EV3PICCConfigurationSettings;
@@ -656,6 +657,16 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     desFireEV3.createFile(fileIdInt, ev3TransactionMacFileSettings);
                     writeToUiAppend(output, "Transaction MAC file created with fileId: " + fileIdInt);
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "create Transaction MAC file success", COLOR_GREEN);
+
+                    // Transaction Timer
+                    // enablement is done using the SetConfiguration command with option (byte) 0x55
+                    EV1PICCConfigurationSettings confByte = null;
+
+                    //SetConfiguration 0x5C Yes Yes Yes but differences in PICC
+
+                    //byte confByte = (byte) 0x55;
+                    //desFireEV3.setConfigurationByte(confByte);
+
                     return;
 /*
 Command sent to card : 45
