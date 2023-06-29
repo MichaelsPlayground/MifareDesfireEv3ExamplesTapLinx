@@ -36,6 +36,16 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvInformation2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:text="Note: this app is working with  Mifare DESFire EV3 tags ONLY !"
+                android:textAlignment="center"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/tvInformation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

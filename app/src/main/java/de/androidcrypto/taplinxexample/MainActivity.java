@@ -488,6 +488,35 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             public void onClick(View view) {
                 // create a new application
                 clearOutputFields();
+                String logString = "create a new application with AES keys";
+                writeToUiAppend(output, logString);
+                int numberOfKeysInt = Integer.parseInt(numberOfKeys.getText().toString());
+                byte[] applicationIdentifier = Utils.hexStringToByteArray(applicationId.getText().toString());
+                if ((applicationIdentifier == null) || (applicationIdentifier.length != 3)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong application ID", COLOR_RED);
+                    return;
+                }
+                if ((numberOfKeysInt < 1) || (numberOfKeysInt > 14)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong number of keys (range 1..14)", COLOR_RED);
+                    return;
+                }
+                boolean success = createApplicationEv3(logString, applicationIdentifier, numberOfKeysInt, KeyType.AES128);
+                if (success) {
+                    writeToUiAppend(output, "SUCCESS for " + printData("new appID", applicationIdentifier) + " with " + numberOfKeysInt + " AES keys");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppend(output, logString + " not possible for " + printData("new appID", applicationIdentifier) + " with " + numberOfKeysInt + " AES keys");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
+                }
+            }
+        });
+
+        /* old one
+        applicationCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // create a new application
+                clearOutputFields();
                 writeToUiAppend(output, "create a new application");
                 int numberOfKeysInt = Integer.parseInt(numberOfKeys.getText().toString());
                 byte[] applicationIdentifier = Utils.hexStringToByteArray(applicationId.getText().toString());
@@ -501,7 +530,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 }
                 //int appIdInt = Utilities.bytesToInt(applicationIdentifier);
                 //writeToUiAppend(output, "appId as Integer: " + appIdInt);
-                EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(applicationIdentifier, numberOfKeysInt);
+                EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(numberOfKeysInt);
                 try {
                     // important: first select the  Master Application ('0')
                     desFireEV3.selectApplication(0);
@@ -529,6 +558,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 }
             }
         });
+        */
 
 
         applicationSelect.setOnClickListener(new View.OnClickListener() {
@@ -1234,6 +1264,84 @@ newKeyVersion - new key version byte.
 
     }
 
+    /**
+     * section for applications
+     */
+
+    /**
+     * creates a new application for Mifare DESFireEV3 tag with default settings:
+     * .setAppKeySettingsChangeable(true)
+     * .setAppMasterKeyChangeable(true)
+     * .setAuthenticationRequiredForFileManagement(false)
+     * .setAuthenticationRequiredForDirectoryConfigurationData(false)
+     *
+     * @param logString: provide a string for error log
+     * @param applicationIdentifier: 3 bytes long array with the application identifier
+     * @param numberOfKeysInt: minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
+     * @return true for create success
+     * Note: this methods assumes that we can create a new application without prior authentication with the master application key (setup in PICC settings)
+     */
+    private boolean createApplicationEv3(String logString, byte[] applicationIdentifier, int numberOfKeysInt, KeyType keyType) {
+        // create a new application
+        Log.d(TAG, logString + " for " + printData("AID", applicationIdentifier) + " with " + numberOfKeysInt + " keys of type " + keyType.toString());
+        // sanity checks
+        if ((applicationIdentifier == null) || (applicationIdentifier.length != 3)) {
+            Log.e(TAG, logString + " wrong argument: applicationIdentifier is NULL or not of length 3, aborted");
+            return false;
+        }
+        if (numberOfKeysInt < 1) {
+            Log.e(TAG, logString + " wrong argument: numberOfKeysInt is < 1, aborted");
+            return false;
+        }
+        if (numberOfKeysInt > 14) {
+            Log.e(TAG, logString + " wrong argument: numberOfKeysInt is > 14, aborted");
+            return false;
+        }
+        if (keyType.toString().equals(KeyType.UNKNOWN.toString())) {
+            Log.e(TAG, logString + " wrong argument: keyType is UNKNOWN, aborted");
+            return false;
+        }
+        // get the default application settings
+        EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(numberOfKeysInt, keyType);
+        if (applicationKeySettings == null) {
+            Log.e(TAG, logString + " the applicationKeysSettings are NULL, aborted");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " could not get the application settings, aborted", COLOR_RED);
+        }
+        try {
+            // important: first select the Master Application ('0')
+            desFireEV3.selectApplication(0);
+            // depending on MasterKey settings an authentication is necessary, skipped here
+            desFireEV3.createApplication(applicationIdentifier, applicationKeySettings);
+            //writeToUiAppend(output, "create a new application done," + printData("new appID", applicationIdentifier));
+            //writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+
     private byte[] wrapMessage(byte command, byte[] parameters) throws IOException {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         stream.write((byte) 0x90);
@@ -1317,8 +1425,30 @@ newKeyVersion - new key version byte.
      * section for helper methods
      */
 
-    private EV3ApplicationKeySettings getApplicationSettingsDefault(byte[] appId, int numberOfApplicationKeys) {
-        Log.d(TAG, "Creating default application settings");
+    private EV3ApplicationKeySettings getApplicationSettingsDefault(int maxNumberOfApplicationKeys, KeyType keyType) {
+        Log.d(TAG, "get default application settings with maxNumberOfApplicationKeys " + maxNumberOfApplicationKeys + " and keyType " + keyType);
+        if (maxNumberOfApplicationKeys < 1) {
+            Log.e(TAG, "maxNumberOfApplicationKeys is < 1, aborted");
+            return null;
+        }
+        EV3ApplicationKeySettings.Builder appsetbuilder = new EV3ApplicationKeySettings.Builder();
+        appsetbuilder
+                .setAppKeySettingsChangeable(true)
+                .setAppMasterKeyChangeable(true)
+                .setAuthenticationRequiredForFileManagement(false)
+                .setAuthenticationRequiredForDirectoryConfigurationData(false)
+                .setKeyTypeOfApplicationKeys(keyType)
+                .setMaxNumberOfApplicationKeys(maxNumberOfApplicationKeys);
+        EV3ApplicationKeySettings appsettings = appsetbuilder.build();
+        return appsettings;
+    }
+
+    private EV3ApplicationKeySettings getApplicationSettingsDefault(int maxNumberOfApplicationKeys) {
+        Log.d(TAG, "get default application settings with maxNumberOfApplicationKeys " + maxNumberOfApplicationKeys);
+        if (maxNumberOfApplicationKeys < 1) {
+            Log.e(TAG, "maxNumberOfApplicationKeys is < 1, aborted");
+            return null;
+        }
         EV3ApplicationKeySettings.Builder appsetbuilder = new EV3ApplicationKeySettings.Builder();
         appsetbuilder
                 .setAppKeySettingsChangeable(true)
@@ -1326,8 +1456,7 @@ newKeyVersion - new key version byte.
                 .setAuthenticationRequiredForFileManagement(false)
                 .setAuthenticationRequiredForDirectoryConfigurationData(false)
                 .setKeyTypeOfApplicationKeys(KeyType.AES128)
-                .setMaxNumberOfApplicationKeys(numberOfApplicationKeys);
-
+                .setMaxNumberOfApplicationKeys(maxNumberOfApplicationKeys);
         EV3ApplicationKeySettings appsettings = appsetbuilder.build();
         return appsettings;
     }
