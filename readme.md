@@ -2,7 +2,7 @@
 
 This application is using the **TapLinx library from NXP** to get access to a **Mifare DESFire EV3** tag.
 
-### Important note: the app works with tags of type EV3 only (hardcoded). Trying to work with other types like EV1, EV2 or Light will fail for all operations !
+### Important note: the app works with tags of type EV3 only (hardcoded). Trying to work with other tag types like EV1, EV2 or Light will fail for all operations !
 
 ### How to get the library:
 The library is available on NXP's website for free after a registration (only email and password is necessary) and login:
