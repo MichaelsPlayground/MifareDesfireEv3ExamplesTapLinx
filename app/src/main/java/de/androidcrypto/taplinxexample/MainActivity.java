@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
      * Package Key.
      */
     static String packageKey = "07e7a6e1091d445f60ce756883b42ef2";
-
+    // Persisting first open: 1688060183131
     /**
      * NxpNfclib instance.
      */
@@ -1577,6 +1577,9 @@ newKeyVersion - new key version byte.
                 writeToUiAppend(output, "i: " + i + " appIdInt: " + appIdInt + " hex: " + appIdString);
                 lastAppIdInt = appIdInt;
             }
+
+            /*
+
             // select the last application
             desFireEV3.selectApplication(lastAppIdInt);
             byte[] fileIds = desFireEV3.getFileIDs();
@@ -1598,7 +1601,7 @@ newKeyVersion - new key version byte.
             desFireEV3.authenticate(readAccessKeyNumber, IDESFireEV3.AuthType.Native, KeyType.THREEDES, objKEY_TDES_ZERO);
             authStatus = desFireEV3.getAuthStatus();
             writeToUiAppend(output, "authStatus: " + authStatus);
-
+*/
 /*
 void changeKey(int cardkeyNumber,
                KeyType keyType,
@@ -1623,7 +1626,7 @@ if type is THREE_KEY_THREEDES then, key data should be 24 bytes but key data not
 newKeyVersion - new key version byte.
  */
 
-
+/*
             int fileNumber = 12;
             int offset = 0;
             int readLength = 0; // if 0 the complete file is read
@@ -1634,7 +1637,7 @@ newKeyVersion - new key version byte.
             //desFireEV2.selectApplication(0);
 
             //desFireEV2.authenticate(0, IDESFireEV2.AuthType.Native, KeyType.THREEDES, objKEY_2KTDES);
-
+*/
             // Set the custom path where logs will get stored, here we are setting the log folder DESFireLogs under
             // external storage.
             String spath = Environment.getExternalStorageDirectory().getPath() + File.separator + "DESFireLogs";
