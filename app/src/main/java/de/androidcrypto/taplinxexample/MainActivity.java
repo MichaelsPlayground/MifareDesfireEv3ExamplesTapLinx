@@ -75,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
      */
     static String packageKey = "07e7a6e1091d445f60ce756883b42ef2";
     // Persisting first open: 1688060183131
+    // Persisting first open: 1688067416793
     /**
      * NxpNfclib instance.
      */
