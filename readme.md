@@ -1,6 +1,28 @@
-# TapLinx Example
+# Mifare DESFire EV examples using TapLinx library
 
-Source: https://github.com/MichaelsPlayground/MifareDesfireEv3ExamplesAesTapLinx
+This application is using the **TapLinx library from NXP** to get access to a **Mifare DESFire EV3** tag.
+
+### Important note: the app works with tags of type EV3 only (hardcoded). Trying to work with other types like EV1, EV2 or Light will fail for all operations !
+
+### How to get the library:
+The library is available on NXP's website for free after a registration (only email and password is necessary) and login:
+https://www.mifare.net/en/login/.
+
+You need a license string for app (you get it after log-in) - register the app with your individual package name.
+
+### Do I need an additional setup?
+Yes, as the library is bundled with **Google Analytics** you need to register the app with your Google account to get a google-services.json file 
+for your individual package name. 
+
+## application development status: UNFINISHED
+This app is in development so most of the buttons in the main menu won't work or with internal defined values so please **use the app at this time with caution.**  
+
+
+
+
+ 
+
+Source: https://github.com/MichaelsPlayground/MifareDesfireEv3ExamplesDesTapLinx
 
 Firebase Analytics: Michael Fehr fb.samples.2022@gmail.com
 
