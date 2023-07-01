@@ -1308,6 +1308,25 @@ newKeyVersion - new key version byte.
         });
 
 
+        freeMemory.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // get the free memory on the card
+                clearOutputFields();
+                String logString = "get the free memory on the tag";
+                writeToUiAppend(output, logString);
+
+                int freeMemoryInt = getFreeMemory(logString);
+                if (freeMemoryInt > -1) {
+                    writeToUiAppend(output, logString + ": " + freeMemoryInt + " bytes");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppend(output, logString + ": get an ERROR");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
+                }
+            }
+        });
+
         // testing
 
         createApplication1.setOnClickListener(new View.OnClickListener() {
@@ -1607,6 +1626,38 @@ newKeyVersion - new key version byte.
         return keyVersion;
     }
 
+    private int getFreeMemory(String logString) {
+        Log.d(TAG, logString);
+        int freeMemory = 0;
+        try {
+            // important: first select the Master Application ('0')
+            desFireEV3.selectApplication(0);
+            freeMemory = desFireEV3.getFreeMemory();
+            return freeMemory;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return -1;
+    }
 
     /**
      * section for key conversion
