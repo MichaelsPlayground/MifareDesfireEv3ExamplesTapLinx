@@ -26,5 +26,5 @@ buildscript {
     }
 }
 
-rootProject.name = "MifareDesfireEv3ExamplesDesTapLinx"
+rootProject.name = "MifareDesfireEv3ExamplesTapLinx"
 include ':app'
