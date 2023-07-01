@@ -213,6 +213,15 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private LinearLayout llTMacFile;
     private Button fileTMacCreate, fileTMacWrite, fileTMacRead;
 
+    /**
+     * section for authentication
+     */
+
+    private Button authDM0D, authD0D, authD1D, authD2D, authD3D, authD4D; // auth with default DES keys
+    private Button authDM0A, authD0A, authD1A, authD2A, authD3A, authD4A; // auth with default AES keys
+    private Button authDM0DC, authD0DC, authD1DC, authD2DC, authD3DC, authD4DC; // auth with changed DES keys
+    private Button authDM0AC, authD0AC, authD1AC, authD2AC, authD3AC, authD4AC; // auth with changed AES keys
+
 
     /**
      * section for DES authentication
@@ -247,6 +256,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     // proximity check
     private Button proximityPrepare, proximityCheck, proximityVerify;
+    // testing
+    private Button createApplication1;
 
 
     // constants
@@ -410,6 +421,39 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         fileStandardWriteEnc = findViewById(R.id.btnWriteStandardFileEnc);
         manualEncryption = findViewById(R.id.btnManualEnc);
 
+        // authentication handling DES default keys
+        authDM0D = findViewById(R.id.btnAuthDM0D);
+        authD0D = findViewById(R.id.btnAuthD0D);
+        authD1D = findViewById(R.id.btnAuthD1D);
+        authD2D = findViewById(R.id.btnAuthD2D);
+        authD3D = findViewById(R.id.btnAuthD3D);
+        authD4D = findViewById(R.id.btnAuthD4D);
+
+        // authentication handling AES default keys
+        authDM0A = findViewById(R.id.btnAuthDM0A);
+        authD0A = findViewById(R.id.btnAuthD0A);
+        authD1A = findViewById(R.id.btnAuthD1A);
+        authD2A = findViewById(R.id.btnAuthD2A);
+        authD3A = findViewById(R.id.btnAuthD3A);
+        authD4A = findViewById(R.id.btnAuthD4A);
+
+        // authentication handling DES changed keys
+        authDM0DC = findViewById(R.id.btnAuthDM0DC);
+        authD0DC = findViewById(R.id.btnAuthD0DC);
+        authD1DC = findViewById(R.id.btnAuthD1DC);
+        authD2DC = findViewById(R.id.btnAuthD2DC);
+        authD3DC = findViewById(R.id.btnAuthD3DC);
+        authD4DC = findViewById(R.id.btnAuthD4DC);
+
+        // authentication handling AES changed keys
+        authDM0AC = findViewById(R.id.btnAuthDM0AC);
+        authD0AC = findViewById(R.id.btnAuthD0AC);
+        authD1AC = findViewById(R.id.btnAuthD1AC);
+        authD2AC = findViewById(R.id.btnAuthD2AC);
+        authD3AC = findViewById(R.id.btnAuthD3AC);
+        authD4AC = findViewById(R.id.btnAuthD4AC);
+
+        // OLD menu
         // authentication handling
         authKeyDM0 = findViewById(R.id.btnAuthDM0);
         authKeyD0 = findViewById(R.id.btnAuthD0);
@@ -465,6 +509,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         proximityCheck = findViewById(R.id.btnProximityCheck);
         proximityVerify = findViewById(R.id.btnProximityVerify);
 
+        // just for check
+        createApplication1 = findViewById(R.id.btnCreateApplication1); // will create an application with number 1
 
         /* Initialize the library and register to this activity */
         initializeLibrary();
@@ -611,7 +657,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 builder.setItems(applicationList, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        writeToUiAppend(output, "you  selected nr " + which + " = " + applicationList[which]);
+                        writeToUiAppend(output, "you selected nr " + which + " = " + applicationList[which]);
                         boolean dfSelectApplication = false;
                         try {
                             byte[] aid = Utilities.stringToBytes(applicationList[which]);
@@ -1262,6 +1308,29 @@ newKeyVersion - new key version byte.
         });
 
 
+        // testing
+
+        createApplication1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // create a new application
+                clearOutputFields();
+                String logString = "create a new application 1 with 5 AES keys";
+                writeToUiAppend(output, logString);
+                int numberOfKeysInt = 5;
+                int applicationIdentifierInt = 1;
+
+                boolean success = createApplicationEv3(logString, applicationIdentifierInt, numberOfKeysInt, KeyType.AES128);
+                if (success) {
+                    writeToUiAppend(output, "SUCCESS for new appID int" + applicationIdentifierInt + " with " + numberOfKeysInt + " AES keys");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppend(output, logString + " not possible for new appID int" + applicationIdentifierInt + " with " + numberOfKeysInt + " AES keys");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
+                }
+            }
+        });
+
     }
 
     /**
@@ -1340,6 +1409,78 @@ newKeyVersion - new key version byte.
         return false;
     }
 
+    /**
+     * creates a new application for Mifare DESFireEV3 tag with default settings:
+     * .setAppKeySettingsChangeable(true)
+     * .setAppMasterKeyChangeable(true)
+     * .setAuthenticationRequiredForFileManagement(false)
+     * .setAuthenticationRequiredForDirectoryConfigurationData(false)
+     *
+     * @param logString: provide a string for error log
+     * @param applicationIdentifierInt: an integer for the application number
+     * @param numberOfKeysInt: minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
+     * @return true for create success
+     * Note: this methods assumes that we can create a new application without prior authentication with the master application key (setup in PICC settings)
+     */
+    private boolean createApplicationEv3(String logString, int applicationIdentifierInt, int numberOfKeysInt, KeyType keyType) {
+        // create a new application
+        byte[] applicationIdentifier = Utilities.intToBytes(applicationIdentifierInt, 3);
+        Log.d(TAG, logString + " for " + printData("AID", applicationIdentifier) + " with " + numberOfKeysInt + " keys of type " + keyType.toString());
+        // sanity checks
+        if ((applicationIdentifier == null) || (applicationIdentifier.length != 3)) {
+            Log.e(TAG, logString + " wrong argument: applicationIdentifier is NULL or not of length 3, aborted");
+            return false;
+        }
+        if (numberOfKeysInt < 1) {
+            Log.e(TAG, logString + " wrong argument: numberOfKeysInt is < 1, aborted");
+            return false;
+        }
+        if (numberOfKeysInt > 14) {
+            Log.e(TAG, logString + " wrong argument: numberOfKeysInt is > 14, aborted");
+            return false;
+        }
+        if (keyType.toString().equals(KeyType.UNKNOWN.toString())) {
+            Log.e(TAG, logString + " wrong argument: keyType is UNKNOWN, aborted");
+            return false;
+        }
+        // get the default application settings
+        EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(numberOfKeysInt, keyType);
+        if (applicationKeySettings == null) {
+            Log.e(TAG, logString + " the applicationKeysSettings are NULL, aborted");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " could not get the application settings, aborted", COLOR_RED);
+        }
+        try {
+            // important: first select the Master Application ('0')
+            desFireEV3.selectApplication(0);
+            // depending on MasterKey settings an authentication is necessary, skipped here
+            desFireEV3.createApplication(applicationIdentifier, applicationKeySettings);
+            //writeToUiAppend(output, "create a new application done," + printData("new appID", applicationIdentifier));
+            //writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
 
 
     private byte[] wrapMessage(byte command, byte[] parameters) throws IOException {
