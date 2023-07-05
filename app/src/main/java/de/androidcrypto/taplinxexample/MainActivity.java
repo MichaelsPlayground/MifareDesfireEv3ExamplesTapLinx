@@ -741,7 +741,40 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "create a standard or backup file";
                 writeToUiAppend(output, logString);
-                aaa
+
+                byte fileIdByte = (byte) (npStandardFileId.getValue() & 0xFF);
+                int fileIdInt = npStandardFileId.getValue();
+
+                // the number of files on an EV1 tag is limited to 32 (00..31), but we are using the limit for the old D40 tag with a maximum of 15 files (00..14)
+                // this limit is hardcoded in the XML file for the fileId numberPicker
+
+                //byte fileIdByte = Byte.parseByte(fileId.getText().toString());
+                int fileSizeInt = Integer.parseInt(fileSize.getText().toString());
+                if (fileIdByte > (byte) 0x0f) {
+                    // this should not happen as the limit is hardcoded in npFileId
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong file ID", COLOR_RED);
+                    return;
+                }
+                // communication setting choice
+                IDESFireEV1.CommunicationType comSettings;
+                if (rbFileStandardPlainCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.Plain;
+                } else if (rbFileStandardMacedCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.MACed;
+                } else {
+                    comSettings = IDESFireEV1.CommunicationType.Enciphered;
+                }
+                boolean isStandardFile = rbStandardFile.isChecked(); // as there are 2 options only we just just check rbStandardFile
+                boolean success = createAStandardBackupFile(logString,isStandardFile, fileIdInt, comSettings, 1, 2, 3, 4, fileSizeInt);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
             }
         });
 
@@ -1510,14 +1543,20 @@ newKeyVersion - new key version byte.
      * section for files
      */
 
-    private boolean createAStandardBackupFile(String logString, byte[] dataToWrite) {
-        Log.d(TAG, logString + " data: " + Utilities.byteToHexString(dataToWrite));
+    private boolean createAStandardBackupFile(String logString, boolean isStandardFile, int fileNumber, IDESFireEV1.CommunicationType communicationType, int rwKeyInt, int carKeyInt, int rKeyInt, int wKeyInt, int fileSize) {
+        Log.d(TAG, logString + " isStandardFile: " + isStandardFile);
         try {
-            int offset = 0; // write from the beginning
-            int length = 0; // write complete file
-
-            desFireEV3.createFile();
-            desFireEV3.writeData(selectedFileIdInt, offset, dataToWrite);
+            byte readAccess = (byte) (rKeyInt & 0xff);
+            byte writeAccess = (byte) (wKeyInt & 0xff);
+            byte readWriteAccess = (byte) (rwKeyInt & 0xff);
+            byte changeAccess = (byte) (carKeyInt & 0xff);
+            DESFireFile.FileSettings fileSettings;
+            if (isStandardFile) {
+                fileSettings = new DESFireFile.StdDataFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, fileSize);
+            } else {
+                fileSettings = new DESFireFile.BackupDataFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, fileSize);
+            }
+            desFireEV3.createFile(fileNumber, fileSettings);
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
