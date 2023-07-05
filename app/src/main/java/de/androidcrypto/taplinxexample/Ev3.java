@@ -10,10 +10,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class Ev3 {
 
-
-
-
-
     public static String getErrorCode(byte[] twoByteResponse) {
         if (twoByteResponse == null) {
             return "response is null";

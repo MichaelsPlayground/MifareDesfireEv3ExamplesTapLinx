@@ -719,7 +719,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                         sb.append("key for R access:   ").append(accessR).append("\n");
                         sb.append("key for W access:   ").append(accessW).append("\n");
                         writeToUiAppend(output, sb.toString());
-                        fileSelected.setText(selectedFileId);
+                        fileSelected.setText(selectedFileId + " (" + type + ")");
                         writeToUiAppendBorderColor(errorCode, errorCodeLayout, "file selected", COLOR_GREEN);
                         vibrateShort();
                     }
@@ -887,7 +887,67 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
          * section for value files
          */
 
+        fileValueCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "create a value file";
+                writeToUiAppend(output, logString);
 
+                byte fileIdByte = (byte) (npValueFileId.getValue() & 0xFF);
+                int fileIdInt = npValueFileId.getValue();
+
+                // the number of files on an EV1 tag is limited to 32 (00..31), but we are using the limit for the old D40 tag with a maximum of 15 files (00..14)
+                // this limit is hardcoded in the XML file for the fileId numberPicker
+
+                //byte fileIdByte = Byte.parseByte(fileId.getText().toString());
+                int lowerLimitInt = Integer.parseInt(lowerLimitValue.getText().toString());
+                int upperLimitInt = Integer.parseInt(upperLimitValue.getText().toString());
+                int initialValueInt = Integer.parseInt(initialValueValue.getText().toString());
+
+                if (fileIdByte > (byte) 0x0f) {
+                    // this should not happen as the limit is hardcoded in npStandardFileId
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong file ID", COLOR_RED);
+                    return;
+                }
+                // communication setting choice
+                IDESFireEV1.CommunicationType comSettings;
+                if (rbFileStandardPlainCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.Plain;
+                } else if (rbFileStandardMacedCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.MACed;
+                } else {
+                    comSettings = IDESFireEV1.CommunicationType.Enciphered;
+                }
+                PayloadBuilder pb = new PayloadBuilder();
+                if ((lowerLimitInt < pb.getMINIMUM_VALUE_LOWER_LIMIT()) || (lowerLimitInt > pb.getMAXIMUM_VALUE_LOWER_LIMIT())) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong lower limit, maximum 1000 allowed only", COLOR_RED);
+                    return;
+                }
+                if ((upperLimitInt < pb.getMINIMUM_VALUE_UPPER_LIMIT()) || (upperLimitInt > pb.getMAXIMUM_VALUE_UPPER_LIMIT())) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong upper limit, maximum 1000 allowed only", COLOR_RED);
+                    return;
+                }
+                if (upperLimitInt <= lowerLimitInt) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong upper limit, should be higher than lower limit", COLOR_RED);
+                    return;
+                }
+                if ((initialValueInt < pb.getMINIMUM_VALUE_LOWER_LIMIT()) || (initialValueInt > pb.getMAXIMUM_VALUE_UPPER_LIMIT())) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong initial value, should be between lower and higher limit", COLOR_RED);
+                    return;
+                }
+                boolean success = createAValueFile(logString, fileIdInt, comSettings, 1, 2, 3, 4, lowerLimitInt, upperLimitInt, initialValueInt);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+           }
+        });
 
         fileValueRead.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -895,6 +955,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "read from a value file";
                 writeToUiAppend(output, logString);
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
                 // check that the selected file is a value file
                 DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
                 if (fileType == DESFireEV3File.EV3FileType.Value) {
@@ -922,6 +986,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "credit a value file";
                 writeToUiAppend(output, logString);
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
                 // check that the selected file is a value file
                 DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
                 if (fileType == DESFireEV3File.EV3FileType.Value) {
@@ -932,14 +1000,257 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     return;
                 }
                 int changeValueInt = Integer.parseInt(creditDebitValue.getText().toString());
+                PayloadBuilder pb = new PayloadBuilder();
                 if ((changeValueInt < 1) || (changeValueInt > pb.getMAXIMUM_VALUE_UPPER_LIMIT())) {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong change value, should be between lower and higher limit", COLOR_RED);
                     return;
                 }
-
-
+                writeToUiAppend(output, "credit amount: " + changeValueInt);
+                boolean success = creditAValueFile(logString, changeValueInt);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                boolean successCommit = commitATransaction(logString);
+                if (successCommit) {
+                    writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
             }
         });
+
+        fileValueDebit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "debit a value file";
+                writeToUiAppend(output, logString);
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
+                // check that the selected file is a value file
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                if (fileType == DESFireEV3File.EV3FileType.Value) {
+                    // everything is ok, do nothing
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Value file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+                int changeValueInt = Integer.parseInt(creditDebitValue.getText().toString());
+                PayloadBuilder pb = new PayloadBuilder();
+                if ((changeValueInt < 1) || (changeValueInt > pb.getMAXIMUM_VALUE_UPPER_LIMIT())) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong change value, should be between lower and higher limit", COLOR_RED);
+                    return;
+                }
+                writeToUiAppend(output, "debit amount: " + changeValueInt);
+                boolean success = debitAValueFile(logString, changeValueInt);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                boolean successCommit = commitATransaction(logString);
+                if (successCommit) {
+                    writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+            }
+        });
+
+        /**
+         * section for linear & cyclic record files
+         */
+
+        fileRecordCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "create a linear or cyclic record file";
+                writeToUiAppend(output, logString);
+
+                byte fileIdByte = (byte) (npRecordFileId.getValue() & 0xFF);
+                int fileIdInt = npRecordFileId.getValue();
+
+                // the number of files on an EV1 tag is limited to 32 (00..31), but we are using the limit for the old D40 tag with a maximum of 15 files (00..14)
+                // this limit is hardcoded in the XML file for the fileId numberPicker
+
+                int fileSizeInt = Integer.parseInt(fileRecordSize.getText().toString());
+                if (fileSizeInt == 0) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a 0 size (minimum 1)", COLOR_RED);
+                    return;
+                }
+                if (fileIdByte > (byte) 0x0f) {
+                    // this should not happen as the limit is hardcoded in npFileId
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a wrong file ID", COLOR_RED);
+                    return;
+                }
+                int fileNumberOfRecordsInt = Integer.parseInt(fileRecordNumberOfRecords.getText().toString());
+                if (fileNumberOfRecordsInt < 2) {
+                    // this should not happen as the limit is hardcoded in npFNumberOfRecords
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you entered a 0 record number (minimum 2)", COLOR_RED);
+                    return;
+                }
+                // get the type of file - linear or cyclic
+                boolean isLinearRecordFile = rbLinearRecordFile.isChecked();
+
+                String fileTypeString = "";
+                if (isLinearRecordFile) {
+                    fileTypeString = "Linear Record File";
+                } else {
+                    fileTypeString = "Cyclic Record File";
+                }
+
+                // communication setting choice
+                IDESFireEV1.CommunicationType comSettings;
+                if (rbFileStandardPlainCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.Plain;
+                } else if (rbFileStandardMacedCommunication.isChecked()) {
+                    comSettings = IDESFireEV1.CommunicationType.MACed;
+                } else {
+                    comSettings = IDESFireEV1.CommunicationType.Enciphered;
+                }
+                writeToUiAppend(output, "trying to create a " + fileTypeString);
+                boolean success = createARecordFile(logString, isLinearRecordFile, fileIdInt, comSettings, 1, 2, 3, 4, fileSizeInt, fileNumberOfRecordsInt, 0);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+            }
+        });
+
+        fileRecordRead.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "read from a linear or cyclic record file";
+                writeToUiAppend(output, logString);
+                // check that the selected file is a linear or cyclic record file
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                if ((fileType == DESFireEV3File.EV3FileType.RecordLinear) || (fileType == DESFireEV3File.EV3FileType.RecordCyclic)) {
+                    // everything is ok, do nothing
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Linear or Cyclic Record file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+                byte[] data = readFromARecordFile(logString);
+                if (data == null) {
+                    writeToUiAppend(output, logString + " FAILURE");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                // need to separate the data into single records based on recordSize
+
+
+                writeToUiAppend(output, "data read: " + Utilities.byteToHexString(data));
+                writeToUiAppend(output, lineSeparator);
+                writeToUiAppend(output, "data read: " + new String(data, StandardCharsets.UTF_8));
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                vibrateShort();
+            }
+        });
+
+        fileStandardWrite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "write to a standard or backup file";
+                writeToUiAppend(output, logString);
+                // this uses the pre selected file
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
+                String dataToWriteString = fileData.getText().toString();
+                if (TextUtils.isEmpty(dataToWriteString)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "please enter some data to write", COLOR_RED);
+                    return;
+                }
+                // check that the selected file is a standard or backup file
+                DESFireEV3File.StdEV3DataFileSettings stdEV3DataFileSettings;
+                DESFireEV3File.BackupEV3DataFileSettings backupEV3DataFileSettings;
+                int fileSize = 0;
+                boolean isBackupFile = false; // backup files require a commit after writing
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                if ((fileType == DESFireEV3File.EV3FileType.DataStandard) || (fileType == DESFireEV3File.EV3FileType.DataBackup)) {
+                    // everything is ok, get the file size
+                    if (fileType == DESFireEV3File.EV3FileType.DataStandard) {
+                        stdEV3DataFileSettings = (DESFireEV3File.StdEV3DataFileSettings) selectedFileSettings;
+                        fileSize = stdEV3DataFileSettings.getFileSize();
+                    } else {
+                        backupEV3DataFileSettings = (DESFireEV3File.BackupEV3DataFileSettings) selectedFileSettings;
+                        fileSize = backupEV3DataFileSettings.getFileSize();
+                        isBackupFile = true;
+                    }
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Standard or Backup file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+
+                // get a random payload with 32 bytes
+                UUID uuid = UUID.randomUUID(); // this is 36 characters long
+                //byte[] dataToWrite = Arrays.copyOf(uuid.toString().getBytes(StandardCharsets.UTF_8), 32); // this 32 bytes long
+
+                // create an empty array and copy the dataToWrite to clear the complete standard file
+                byte[] fullDataToWrite = new byte[fileSize];
+                // limit the string
+                if (dataToWriteString.length() > fileSize) dataToWriteString = dataToWriteString.substring(0, fileSize);
+                byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
+                System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
+                Log.d(TAG, logString + " fullDataToWrite: " + Utilities.byteToHexString(fullDataToWrite));
+                boolean success = writeToStandardBackupFile(logString, fullDataToWrite);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    if (!isBackupFile) {
+                        // finish the operation
+                        vibrateShort();
+                        return;
+                    }
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                // as it is a Backup file type we need to submit a COMMIT
+                boolean successCommit = commitATransaction(logString);
+                if (successCommit) {
+                    writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+            }
+        });
+
+
 
 
         /**
@@ -955,7 +1266,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -973,7 +1284,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -991,7 +1302,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -1009,7 +1320,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -1027,7 +1338,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -1045,7 +1356,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -1064,7 +1375,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 boolean success = legacyAesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                 } else {
@@ -1718,7 +2029,45 @@ newKeyVersion - new key version byte.
      * section for value files
      */
 
+    private boolean createAValueFile(String logString, int fileNumber, IDESFireEV1.CommunicationType communicationType, int rwKeyInt, int carKeyInt, int rKeyInt, int wKeyInt, int lowerLimit, int upperLimit, int initialValue) {
+        Log.d(TAG, logString);
+        try {
+            byte readAccess = (byte) (rKeyInt & 0xff);
+            byte writeAccess = (byte) (wKeyInt & 0xff);
+            byte readWriteAccess = (byte) (rwKeyInt & 0xff);
+            byte changeAccess = (byte) (carKeyInt & 0xff);
+            DESFireFile.FileSettings fileSettings;
+            boolean limitedCreditValueEnabled = false;
+            boolean getFreeValueEnabled = false;
+            fileSettings = new DESFireFile.ValueFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, lowerLimit, upperLimit, initialValue, limitedCreditValueEnabled, getFreeValueEnabled);
+            desFireEV3.createFile(fileNumber, fileSettings);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
 
+    }
 
     private int readFromAValueFile (String logString) {
         Log.d(TAG, logString);
@@ -1814,6 +2163,118 @@ newKeyVersion - new key version byte.
         return false;
     }
 
+    /**
+     * section for linear & cyclic record files
+     */
+
+    private boolean createARecordFile(String logString, boolean isLinearRecordFile, int fileNumber, IDESFireEV1.CommunicationType communicationType, int rwKeyInt, int carKeyInt, int rKeyInt, int wKeyInt, int recordSize, int maxNrOfRecords, int currNoOfRecords) {
+        Log.d(TAG, logString);
+        try {
+            byte readAccess = (byte) (rKeyInt & 0xff);
+            byte writeAccess = (byte) (wKeyInt & 0xff);
+            byte readWriteAccess = (byte) (rwKeyInt & 0xff);
+            byte changeAccess = (byte) (carKeyInt & 0xff);
+            DESFireFile.FileSettings fileSettings;
+            if (isLinearRecordFile) {
+                Log.d(TAG, "create a Linear Record File, recordSize: " + recordSize + " maxNrOfRecords: " + maxNrOfRecords + " currNoOfRecords: " + currNoOfRecords);
+                fileSettings = new DESFireFile.LinearRecordFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, recordSize, maxNrOfRecords, currNoOfRecords);
+            } else {
+                Log.d(TAG, "create a Cyclic Record File, recordSize: " + recordSize + " maxNrOfRecords: " + maxNrOfRecords + " currNoOfRecords: " + currNoOfRecords);
+                fileSettings = new DESFireFile.CyclicRecordFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, recordSize, maxNrOfRecords, currNoOfRecords);
+            }
+            desFireEV3.createFile(fileNumber, fileSettings);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private byte[] readFromARecordFile(String logString) {
+        Log.d(TAG, logString);
+        byte[] data;
+        try {
+            int offsetRecords = 0; // read from the beginning
+            int noOfRecords = 0; // read complete file
+            data = desFireEV3.readRecords(selectedFileIdInt, offsetRecords, noOfRecords);
+            return data;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a read access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private boolean writeToARecordFile(String logString, byte[] dataToWrite) {
+        Log.d(TAG, logString + " data: " + Utilities.byteToHexString(dataToWrite));
+        try {
+            int offsetInRecord = 0; // write from the beginning
+            desFireEV3.writeRecord(selectedFileIdInt, offsetInRecord, dataToWrite);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     /**
      * section for write commit

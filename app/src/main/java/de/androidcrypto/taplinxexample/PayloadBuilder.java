@@ -32,9 +32,9 @@ public class PayloadBuilder {
     private final int MAXIMUM_VALUE_CREDIT = 500;
     private final int MAXIMUM_VALUE_DEBIT = 500;
     private final int MINIMUM_VALUE_LOWER_LIMIT = 0;
-    private final int MAXIMUM_VALUE_LOWER_LIMIT = 500;
+    private final int MAXIMUM_VALUE_LOWER_LIMIT = 1000;
     private final int MINIMUM_VALUE_UPPER_LIMIT = 0;
-    private final int MAXIMUM_VALUE_UPPER_LIMIT = 500;
+    private final int MAXIMUM_VALUE_UPPER_LIMIT = 1000;
 
     public byte[] createApplicationIso(byte[] aid, byte keySettings, byte numberOfKeys, byte[] isoFileId, byte[] isoDfName) {
         // sanity checks
