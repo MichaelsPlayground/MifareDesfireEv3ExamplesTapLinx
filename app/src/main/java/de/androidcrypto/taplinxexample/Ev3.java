@@ -1,8 +1,11 @@
-package de.androidcrypto.mifaredesfireev3examplesdesnfcjlib;
+package de.androidcrypto.taplinxexample;
 
 import android.graphics.Color;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -111,6 +114,24 @@ public class Ev3 {
         SecureRandom secureRandom = new SecureRandom();
         secureRandom.nextBytes(value);
         return value;
+    }
+
+    /**
+     * splits a byte array in chunks
+     *
+     * @param source
+     * @param chunksize
+     * @return a List<byte[]> with sets of chunksize
+     */
+    protected static List<byte[]> divideArray(byte[] source, int chunksize) {
+        List<byte[]> result = new ArrayList<byte[]>();
+        int start = 0;
+        while (start < source.length) {
+            int end = Math.min(source.length, start + chunksize);
+            result.add(Arrays.copyOfRange(source, start, end));
+            start += chunksize;
+        }
+        return result;
     }
 
 

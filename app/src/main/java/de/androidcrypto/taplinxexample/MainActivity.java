@@ -1150,21 +1150,51 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, logString);
                 // check that the selected file is a linear or cyclic record file
                 DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                int recordSize = 0;
+                int maxRecords = 0;
+                int currentRecords = 0;
                 if ((fileType == DESFireEV3File.EV3FileType.RecordLinear) || (fileType == DESFireEV3File.EV3FileType.RecordCyclic)) {
                     // everything is ok, do nothing
+                    if (fileType == DESFireEV3File.EV3FileType.RecordLinear) {
+                        recordSize = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                    } else {
+                        recordSize = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                    }
                 } else {
                     writeToUiAppend(output, "the selected fileId is not of type Linear or Cyclic Record file, aborted");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
                     return;
                 }
-                byte[] data = readFromARecordFile(logString);
+                writeToUiAppend(output, "recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
+                if (currentRecords == 0) {
+                    writeToUiAppend(output, "the are no records to write, consider writing some records");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "nothing to do", COLOR_GREEN);
+                    return;
+                }
+                byte[] data = readFromARecordFile(logString, 0, currentRecords);
                 if (data == null) {
                     writeToUiAppend(output, logString + " FAILURE");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
                     return;
                 }
                 // need to separate the data into single records based on recordSize
-
+                byte[] readRecords; // will hold the complete data of all records
+                List<byte[]> readRecordList = Ev3.divideArray(data, recordSize);
+                int listSize = readRecordList.size();
+                writeToUiAppend(output, lineSeparator);
+                for (int i = 0; i < listSize; i++) {
+                    byte[] record = readRecordList.get(i);
+                    writeToUiAppend(output, "record " + i + printData(" data", record));
+                    if (record != null) {
+                        writeToUiAppend(output, new String(record, StandardCharsets.UTF_8));
+                    }
+                    writeToUiAppend(output, "--------");
+                }
+                writeToUiAppend(output, "finished");
 
                 writeToUiAppend(output, "data read: " + Utilities.byteToHexString(data));
                 writeToUiAppend(output, lineSeparator);
@@ -1174,7 +1204,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
 
-        fileStandardWrite.setOnClickListener(new View.OnClickListener() {
+        fileRecordWrite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 clearOutputFields();
@@ -2210,12 +2240,10 @@ newKeyVersion - new key version byte.
         return false;
     }
 
-    private byte[] readFromARecordFile(String logString) {
+    private byte[] readFromARecordFile(String logString, int offsetRecords, int noOfRecords) {
         Log.d(TAG, logString);
         byte[] data;
         try {
-            int offsetRecords = 0; // read from the beginning
-            int noOfRecords = 0; // read complete file
             data = desFireEV3.readRecords(selectedFileIdInt, offsetRecords, noOfRecords);
             return data;
         } catch (InvalidResponseLengthException e) {
@@ -2311,7 +2339,7 @@ newKeyVersion - new key version byte.
 
     private boolean legacyDesAuth(String logString, int keyNumber, byte[] keyToAuthenticate) {
         try {
-            Log.d(TAG, logString + "keyNumber "+ keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
+            Log.d(TAG, logString + " keyNumber " + keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
             // build a TDES key from DES
             byte[] tdesKey = new byte[16];
             System.arraycopy(keyToAuthenticate, 0, tdesKey, 0, 8);
@@ -2343,7 +2371,7 @@ newKeyVersion - new key version byte.
 
     private boolean legacyAesAuth(String logString, int keyNumber, byte[] keyToAuthenticate) {
         try {
-            Log.d(TAG, logString + "keyNumber "+ keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
+            Log.d(TAG, logString + " keyNumber " + keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
             SecretKey originalKey = new SecretKeySpec(keyToAuthenticate, 0, keyToAuthenticate.length, "AES");
             KeyData keyData = new KeyData();
             keyData.setKey(originalKey);
