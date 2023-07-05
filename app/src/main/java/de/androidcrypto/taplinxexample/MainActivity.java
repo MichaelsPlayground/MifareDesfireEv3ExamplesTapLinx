@@ -198,7 +198,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
      */
 
     private LinearLayout llRecordFile;
-    private Button fileRecordCreate, fileRecordWrite, fileRecordRead;
+    private Button fileRecordCreate, fileRecordWrite, fileRecordWriteTimestamp, fileRecordRead;
     private RadioButton rbLinearRecordFile, rbCyclicRecordFile;
     RadioButton rbFileRecordPlainCommunication, rbFileRecordMacedCommunication, rbFileRecordEncryptedCommunication;
     private com.shawnlin.numberpicker.NumberPicker npRecordFileId;
@@ -373,6 +373,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         fileRecordCreate = findViewById(R.id.btnCreateRecordFile);
         fileRecordRead = findViewById(R.id.btnReadRecordFile);
         fileRecordWrite = findViewById(R.id.btnWriteRecordFile);
+        fileRecordWriteTimestamp = findViewById(R.id.btnWriteRecordFileTimestamp);
         npRecordFileId = findViewById(R.id.npRecordFileId);
         rbFileRecordPlainCommunication = findViewById(R.id.rbFileRecordPlainCommunication);
         rbFileRecordMacedCommunication = findViewById(R.id.rbFileRecordMacedCommunication);
@@ -873,7 +874,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 boolean successCommit = commitATransaction(logString);
                 if (successCommit) {
                     writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                     return;
                 } else {
@@ -1153,23 +1154,27 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 int recordSize = 0;
                 int maxRecords = 0;
                 int currentRecords = 0;
+                String fileTypeName;
                 if ((fileType == DESFireEV3File.EV3FileType.RecordLinear) || (fileType == DESFireEV3File.EV3FileType.RecordCyclic)) {
                     // everything is ok, do nothing
                     if (fileType == DESFireEV3File.EV3FileType.RecordLinear) {
                         recordSize = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getRecordSize();
                         maxRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
                         currentRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
+
                     } else {
                         recordSize = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getRecordSize();
                         maxRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
                         currentRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
                     }
                 } else {
                     writeToUiAppend(output, "the selected fileId is not of type Linear or Cyclic Record file, aborted");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
                     return;
                 }
-                writeToUiAppend(output, "recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
+                writeToUiAppend(output, "fileType: " + fileTypeName + " recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
                 if (currentRecords == 0) {
                     writeToUiAppend(output, "the are no records to write, consider writing some records");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "nothing to do", COLOR_GREEN);
@@ -1182,7 +1187,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     return;
                 }
                 // need to separate the data into single records based on recordSize
-                byte[] readRecords; // will hold the complete data of all records
                 List<byte[]> readRecordList = Ev3.divideArray(data, recordSize);
                 int listSize = readRecordList.size();
                 writeToUiAppend(output, lineSeparator);
@@ -1192,13 +1196,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     if (record != null) {
                         writeToUiAppend(output, new String(record, StandardCharsets.UTF_8));
                     }
-                    writeToUiAppend(output, "--------");
+                    writeToUiAppend(output, lineSeparator);
                 }
                 writeToUiAppend(output, "finished");
-
-                writeToUiAppend(output, "data read: " + Utilities.byteToHexString(data));
-                writeToUiAppend(output, lineSeparator);
-                writeToUiAppend(output, "data read: " + new String(data, StandardCharsets.UTF_8));
                 writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                 vibrateShort();
             }
@@ -1208,7 +1208,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             @Override
             public void onClick(View view) {
                 clearOutputFields();
-                String logString = "write to a standard or backup file";
+                String logString = "write to a linear or record file";
                 writeToUiAppend(output, logString);
                 // this uses the pre selected file
                 if (TextUtils.isEmpty(selectedFileId)) {
@@ -1220,57 +1220,50 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "please enter some data to write", COLOR_RED);
                     return;
                 }
-                // check that the selected file is a standard or backup file
-                DESFireEV3File.StdEV3DataFileSettings stdEV3DataFileSettings;
-                DESFireEV3File.BackupEV3DataFileSettings backupEV3DataFileSettings;
-                int fileSize = 0;
-                boolean isBackupFile = false; // backup files require a commit after writing
+                // check that the selected file is a linear or cyclic records file
+                // check that the selected file is a linear or cyclic record file
                 DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
-                if ((fileType == DESFireEV3File.EV3FileType.DataStandard) || (fileType == DESFireEV3File.EV3FileType.DataBackup)) {
-                    // everything is ok, get the file size
-                    if (fileType == DESFireEV3File.EV3FileType.DataStandard) {
-                        stdEV3DataFileSettings = (DESFireEV3File.StdEV3DataFileSettings) selectedFileSettings;
-                        fileSize = stdEV3DataFileSettings.getFileSize();
+                int recordSize = 0;
+                int maxRecords = 0;
+                int currentRecords = 0;
+                String fileTypeName;
+                if ((fileType == DESFireEV3File.EV3FileType.RecordLinear) || (fileType == DESFireEV3File.EV3FileType.RecordCyclic)) {
+                    // everything is ok, do nothing
+                    if (fileType == DESFireEV3File.EV3FileType.RecordLinear) {
+                        recordSize = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
                     } else {
-                        backupEV3DataFileSettings = (DESFireEV3File.BackupEV3DataFileSettings) selectedFileSettings;
-                        fileSize = backupEV3DataFileSettings.getFileSize();
-                        isBackupFile = true;
+                        recordSize = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
                     }
                 } else {
-                    writeToUiAppend(output, "the selected fileId is not of type Standard or Backup file, aborted");
+                    writeToUiAppend(output, "the selected fileId is not of type Linear or Cyclic Record file, aborted");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
                     return;
                 }
-
-                // get a random payload with 32 bytes
-                UUID uuid = UUID.randomUUID(); // this is 36 characters long
-                //byte[] dataToWrite = Arrays.copyOf(uuid.toString().getBytes(StandardCharsets.UTF_8), 32); // this 32 bytes long
-
+                writeToUiAppend(output, "fileType: " + fileTypeName + " recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
                 // create an empty array and copy the dataToWrite to clear the complete standard file
-                byte[] fullDataToWrite = new byte[fileSize];
-                // limit the string
-                if (dataToWriteString.length() > fileSize) dataToWriteString = dataToWriteString.substring(0, fileSize);
-                byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
-                System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
-                Log.d(TAG, logString + " fullDataToWrite: " + Utilities.byteToHexString(fullDataToWrite));
-                boolean success = writeToStandardBackupFile(logString, fullDataToWrite);
+                byte[] fullDataToWrite = new byte[recordSize];
+                fullDataToWrite = Utils.generateTestData(recordSize);
+                //System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
+                writeToUiAppend(output, printData("fullDataToWrite", fullDataToWrite));
+                boolean success = writeToARecordFile(logString, fullDataToWrite);
                 if (success) {
                     writeToUiAppend(output, logString+ " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
-                    if (!isBackupFile) {
-                        // finish the operation
-                        vibrateShort();
-                        return;
-                    }
                 } else {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
                     return;
                 }
-                // as it is a Backup file type we need to submit a COMMIT
+                // as it is a Record file type we need to submit a COMMIT
                 boolean successCommit = commitATransaction(logString);
                 if (successCommit) {
                     writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                     return;
                 } else {
@@ -1280,8 +1273,76 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
 
-
-
+        fileRecordWriteTimestamp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "write a timestamp to a linear or record file";
+                writeToUiAppend(output, logString);
+                // this uses the pre selected file
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
+                String dataToWriteString = fileData.getText().toString();
+                if (TextUtils.isEmpty(dataToWriteString)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "please enter some data to write", COLOR_RED);
+                    return;
+                }
+                // check that the selected file is a linear or cyclic records file
+                // check that the selected file is a linear or cyclic record file
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                int recordSize = 0;
+                int maxRecords = 0;
+                int currentRecords = 0;
+                String fileTypeName;
+                if ((fileType == DESFireEV3File.EV3FileType.RecordLinear) || (fileType == DESFireEV3File.EV3FileType.RecordCyclic)) {
+                    // everything is ok, do nothing
+                    if (fileType == DESFireEV3File.EV3FileType.RecordLinear) {
+                        recordSize = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.LinearRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
+                    } else {
+                        recordSize = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getRecordSize();
+                        maxRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getMaxNumberOfRecords();
+                        currentRecords = ((DESFireEV3File.CyclicRecordFileSettings) selectedFileSettings).getCurrentNumberOfRecords();
+                        fileTypeName = selectedFileSettings.getType().toString();
+                    }
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Linear or Cyclic Record file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+                writeToUiAppend(output, "fileType: " + fileTypeName + " recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
+                /// limit the string
+                dataToWriteString = Utils.getTimestamp() + " " + dataToWriteString;
+                if (dataToWriteString.length() > recordSize) dataToWriteString = dataToWriteString.substring(0, recordSize);
+                byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
+                byte[] fullDataToWrite = new byte[recordSize];
+                System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
+                writeToUiAppend(output, printData("fullDataToWrite", fullDataToWrite));
+                boolean success = writeToARecordFile(logString, fullDataToWrite);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                // as it is a Record file type we need to submit a COMMIT
+                boolean successCommit = commitATransaction(logString);
+                if (successCommit) {
+                    writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+            }
+        });
 
         /**
          * section for authentication
