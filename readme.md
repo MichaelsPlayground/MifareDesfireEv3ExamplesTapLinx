@@ -1,4 +1,4 @@
-# Mifare DESFire EV examples using TapLinx library
+# Mifare DESFire EV3 examples using TapLinx library
 
 This application is using the **TapLinx library from NXP** to get access to a **Mifare DESFire EV3** tag.
 
@@ -20,7 +20,7 @@ This app is in development so most of the buttons in the main menu won't work or
 
 
 
- 
+Sample project with TapLinx: https://github.com/dfpalomar/TapLinxSample 
 
 Source: https://github.com/MichaelsPlayground/MifareDesfireEv3ExamplesDesTapLinx
 

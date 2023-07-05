@@ -37,11 +37,8 @@ import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
 import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
-import com.nxp.nfclib.desfire.EV1KeySettings;
-import com.nxp.nfclib.desfire.EV1PICCConfigurationSettings;
-import com.nxp.nfclib.desfire.EV2PICCConfigurationSettings;
+import com.nxp.nfclib.desfire.DESFireFile;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
-import com.nxp.nfclib.desfire.EV3PICCConfigurationSettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
 import com.nxp.nfclib.desfire.IDESFireEV2;
 import com.nxp.nfclib.desfire.IDESFireEV3;
@@ -58,9 +55,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -164,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private com.google.android.material.textfield.TextInputEditText fileSelected;
     private String selectedFileId = "";
     private int selectedFileIdInt = -1;
+    private DESFireEV3File.EV3FileSettings selectedFileSettings;
     private int selectedFileSize;
 
     /**
@@ -231,42 +233,44 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     // testing
     private Button createApplication1;
 
-
     // constants
+    private String lineSeparator = "----------";
+
     private final byte[] MASTER_APPLICATION_IDENTIFIER = new byte[3]; // '00 00 00'
-    private final int MASTER_APPLICATION_IDENTIFIER_INT = 0;
-    private final byte[] MASTER_APPLICATION_KEY_DEFAULT = Utils.hexStringToByteArray("0000000000000000");
     private final byte[] MASTER_APPLICATION_KEY_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000");
     private final byte[] MASTER_APPLICATION_KEY_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
-    private final byte[] MASTER_APPLICATION_KEY = Utils.hexStringToByteArray("DD00000000000000");
+    private final byte[] MASTER_APPLICATION_KEY_DES = Utils.hexStringToByteArray("DD00000000000000");
+    private final byte[] MASTER_APPLICATION_KEY_AES = Utils.hexStringToByteArray("AA000000000000000000000000000000");
     private final byte MASTER_APPLICATION_KEY_NUMBER = (byte) 0x00;
-    private final int MASTER_APPLICATION_KEY_NUMBER_INT = 0;
-    private final byte MASTER_APPLICATION_KEY_VERSION = (byte) 0x00;
     private final byte[] APPLICATION_ID_DES = Utils.hexStringToByteArray("A1A2A3");
-    private final byte[] DES_DEFAULT_KEY = new byte[8];
-    private final byte[] DES_DEFAULT_KEY_TDES = new byte[16];
-    private final byte[] DES_DEFAULT_KEY_2KTDES = new byte[24];
-
-    private final byte[] APPLICATION_KEY_MASTER_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
-    private final byte[] APPLICATION_KEY_MASTER = Utils.hexStringToByteArray("D000000000000000");
+    private final byte[] APPLICATION_KEY_MASTER_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_MASTER_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000"); // default AES key with 16 nulls
+    private final byte[] APPLICATION_KEY_MASTER_DES = Utils.hexStringToByteArray("D000000000000000");
+    private final byte[] APPLICATION_KEY_MASTER_AES = Utils.hexStringToByteArray("A0000000000000000000000000000000");
     private final byte APPLICATION_KEY_MASTER_NUMBER = (byte) 0x00;
     private final byte APPLICATION_MASTER_KEY_SETTINGS = (byte) 0x0f; // amks
     private final byte KEY_NUMBER_RW = (byte) 0x01;
-    private final byte[] APPLICATION_KEY_RW_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
-    private final byte[] APPLICATION_KEY_RW_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000"); // default AES key with 16 nulls
-    private final byte[] APPLICATION_KEY_RW = Utils.hexStringToByteArray("D100000000000000");
+    private final byte[] APPLICATION_KEY_RW_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_RW_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final byte[] APPLICATION_KEY_RW_DES = Utils.hexStringToByteArray("D100000000000000");
+    private final byte[] APPLICATION_KEY_RW_AES = Utils.hexStringToByteArray("A1000000000000000000000000000000");
     private final byte APPLICATION_KEY_RW_NUMBER = (byte) 0x01;
-    private final byte[] APPLICATION_KEY_CAR_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
-    private final byte[] APPLICATION_KEY_CAR = Utils.hexStringToByteArray("D200000000000000");
+    private final byte[] APPLICATION_KEY_CAR_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_CAR_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final byte[] APPLICATION_KEY_CAR_DES = Utils.hexStringToByteArray("D200000000000000");
+    private final byte[] APPLICATION_KEY_CAR_AES = Utils.hexStringToByteArray("A2000000000000000000000000000000");
     private final byte APPLICATION_KEY_CAR_NUMBER = (byte) 0x02;
 
-    private final byte[] APPLICATION_KEY_R_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
-    private final byte[] APPLICATION_KEY_R = Utils.hexStringToByteArray("D300000000000000");
+    private final byte[] APPLICATION_KEY_R_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_R_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final byte[] APPLICATION_KEY_R_DES = Utils.hexStringToByteArray("D300000000000000");
+    private final byte[] APPLICATION_KEY_R_AES = Utils.hexStringToByteArray("A3000000000000000000000000000000");
     private final byte APPLICATION_KEY_R_NUMBER = (byte) 0x03;
 
-    private final byte[] APPLICATION_KEY_W_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
-    //private final byte[] APPLICATION_KEY_W = Utils.hexStringToByteArray("B400000000000000");
-    private final byte[] APPLICATION_KEY_W = Utils.hexStringToByteArray("D400000000000000");
+    private final byte[] APPLICATION_KEY_W_DES_DEFAULT = Utils.hexStringToByteArray("0000000000000000"); // default DES key with 8 nulls
+    private final byte[] APPLICATION_KEY_W_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
+    private final byte[] APPLICATION_KEY_W_DES = Utils.hexStringToByteArray("D400000000000000");
+    private final byte[] APPLICATION_KEY_W_AES = Utils.hexStringToByteArray("A4000000000000000000000000000000");
     private final byte APPLICATION_KEY_W_NUMBER = (byte) 0x04;
 
     private final byte[] VIRTUAL_CARD_CONFIG_KEY_AES_DEFAULT = Utils.hexStringToByteArray("00000000000000000000000000000000");
@@ -278,9 +282,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private final int VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT = 33; // 0x21
     private final byte VIRTUAL_CARD_PROXIMITY_KEY_VERSION = (byte) 0x21; // dec 33
 
-    private final byte[] APPLICATION_KEY_CAR_AES = Utils.hexStringToByteArray("A2000000000000000000000000000000");
 
-    private final byte STANDARD_FILE_NUMBER = (byte) 0x01;
+
 
 
     int COLOR_GREEN = Color.rgb(0, 255, 0);
@@ -495,6 +498,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 if (success) {
                     writeToUiAppend(output, "SUCCESS for " + printData("new appID", applicationIdentifier) + " with " + numberOfKeysInt + " AES keys");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
                 } else {
                     writeToUiAppend(output, logString + " not possible for " + printData("new appID", applicationIdentifier) + " with " + numberOfKeysInt + " AES keys");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
@@ -664,47 +668,311 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppend(output, "you need to select an application first, aborted");
                     return;
                 }
-                try {
-                    byte[] fileIdsByteArray = desFireEV1.getFileIDs();
-                    Log.d(TAG, "fileSelect fileIds: " + Utilities.dumpBytes(fileIdsByteArray));
-                } catch (InvalidResponseLengthException e) {
-                    Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
-                    e.printStackTrace();
-                } catch (UsageException e) {
-                    Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
-                    e.printStackTrace();
-                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
-                    Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
-                    e.printStackTrace();
-                } catch (PICCException e) {
-                    Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
-                    e.printStackTrace();
-                } catch (Exception e) {
-                    Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
-                    writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
-                    e.printStackTrace();
+                byte[] fileIds = getFileIds(logString);
+                if (fileIds == null) {
+                    writeToUiAppend(output, "the getFileIds returned null");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "getFileIds FAILURE, aborted", COLOR_RED);
+                    return;
                 }
-
+                if (fileIds.length == 0) {
+                    writeToUiAppend(output, "The getFileIds returned no files");
+                    return;
+                }
+                List<Byte> fileIdList = new ArrayList<>();
+                List<DESFireEV3File.EV3FileSettings> fileSettingsList = new ArrayList<>();
+                for (int i = 0; i < fileIds.length; i++) {
+                    fileIdList.add(fileIds[i]);
+                    fileSettingsList.add(getFileSettings(logString, (int) fileIds[i]));
+                }
+                for (int i = 0; i < fileIdList.size(); i++) {
+                    writeToUiAppend(output, "entry " + i + " file id : " + fileIdList.get(i) + (" (") + Utils.byteToHex(fileIdList.get(i)) + ")");
+                }
+                String[] fileList = new String[fileIdList.size()];
+                for (int i = 0; i < fileIdList.size(); i++) {
+                    //fileList[i] = Utils.byteToHex(fileIdList.get(i));
+                    fileList[i] = String.valueOf((int) fileIdList.get(i))
+                            + " (" + fileSettingsList.get(i).getType().toString() + ")";
+                }
+                // setup the alert builder
+                AlertDialog.Builder builder = new AlertDialog.Builder(view.getContext());
+                builder.setTitle("Choose a file");
+                builder.setItems(fileList, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        writeToUiAppend(output, "you  selected nr " + which + " = " + fileList[which]);
+                        selectedFileId = String.valueOf((int) fileIdList.get(which));
+                        selectedFileIdInt = Integer.parseInt(selectedFileId);
+                        selectedFileSettings = fileSettingsList.get(which);
+                        String type = selectedFileSettings.getType().toString();
+                        String comm = selectedFileSettings.getComSettings().toString();
+                        int accessRW = (int) selectedFileSettings.getReadWriteAccess();
+                        int accessCar = (int) selectedFileSettings.getChangeAccess();
+                        int accessR = (int) selectedFileSettings.getReadAccess();
+                        int accessW = (int) selectedFileSettings.getWriteAccess();
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("selectedFileId: ").append(selectedFileId).append("\n");
+                        sb.append(lineSeparator).append("\n");
+                        sb.append("file type: ").append(type).append("\n");
+                        sb.append("comm type: ").append(comm).append("\n");
+                        sb.append("key for RW access:  ").append(accessRW).append("\n");
+                        sb.append("key for CAR access: ").append(accessCar).append("\n");
+                        sb.append("key for R access:   ").append(accessR).append("\n");
+                        sb.append("key for W access:   ").append(accessW).append("\n");
+                        writeToUiAppend(output, sb.toString());
+                        fileSelected.setText(selectedFileId);
+                        writeToUiAppendBorderColor(errorCode, errorCodeLayout, "file selected", COLOR_GREEN);
+                        vibrateShort();
+                    }
+                });
+                // create and show the alert dialog
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
         });
+
+
+        /**
+         * section for standard & backup files
+         */
+
+        fileStandardCreate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "create a standard or backup file";
+                writeToUiAppend(output, logString);
+                aaa
+            }
+        });
+
+        fileStandardRead.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "read from a standard or backup file";
+                writeToUiAppend(output, logString);
+                // check that the selected file is a standard or backup file
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                if ((fileType == DESFireEV3File.EV3FileType.DataStandard) || (fileType == DESFireEV3File.EV3FileType.DataBackup)) {
+                    // everything is ok, do nothing
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Standard or Backup file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+                byte[] data = readFromStandardBackupFile(logString);
+                if (data == null) {
+                    writeToUiAppend(output, logString + " FAILURE");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                writeToUiAppend(output, "data read: " + Utilities.byteToHexString(data));
+                writeToUiAppend(output, lineSeparator);
+                writeToUiAppend(output, "data read: " + new String(data, StandardCharsets.UTF_8));
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                vibrateShort();
+            }
+        });
+
+        fileStandardWrite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "write to a standard or backup file";
+                writeToUiAppend(output, logString);
+                // this uses the pre selected file
+                if (TextUtils.isEmpty(selectedFileId)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select a file first", COLOR_RED);
+                    return;
+                }
+                String dataToWriteString = fileData.getText().toString();
+                if (TextUtils.isEmpty(dataToWriteString)) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "please enter some data to write", COLOR_RED);
+                    return;
+                }
+                // check that the selected file is a standard or backup file
+                DESFireEV3File.StdEV3DataFileSettings stdEV3DataFileSettings;
+                DESFireEV3File.BackupEV3DataFileSettings backupEV3DataFileSettings;
+                int fileSize = 0;
+                boolean isBackupFile = false; // backup files require a commit after writing
+                DESFireEV3File.EV3FileType fileType = selectedFileSettings.getType();
+                if ((fileType == DESFireEV3File.EV3FileType.DataStandard) || (fileType == DESFireEV3File.EV3FileType.DataBackup)) {
+                    // everything is ok, get the file size
+                    if (fileType == DESFireEV3File.EV3FileType.DataStandard) {
+                        stdEV3DataFileSettings = (DESFireEV3File.StdEV3DataFileSettings) selectedFileSettings;
+                        fileSize = stdEV3DataFileSettings.getFileSize();
+                    } else {
+                        backupEV3DataFileSettings = (DESFireEV3File.BackupEV3DataFileSettings) selectedFileSettings;
+                        fileSize = backupEV3DataFileSettings.getFileSize();
+                        isBackupFile = true;
+                    }
+                } else {
+                    writeToUiAppend(output, "the selected fileId is not of type Standard or Backup file, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "wrong file type", COLOR_RED);
+                    return;
+                }
+
+                // get a random payload with 32 bytes
+                UUID uuid = UUID.randomUUID(); // this is 36 characters long
+                //byte[] dataToWrite = Arrays.copyOf(uuid.toString().getBytes(StandardCharsets.UTF_8), 32); // this 32 bytes long
+
+                // create an empty array and copy the dataToWrite to clear the complete standard file
+                byte[] fullDataToWrite = new byte[fileSize];
+                // limit the string
+                if (dataToWriteString.length() > fileSize) dataToWriteString = dataToWriteString.substring(0, fileSize);
+                byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
+                System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
+                Log.d(TAG, logString + " fullDataToWrite: " + Utilities.byteToHexString(fullDataToWrite));
+                boolean success = writeToStandardBackupFile(logString, fullDataToWrite);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    if (!isBackupFile) {
+                        // finish the operation
+                        vibrateShort();
+                        return;
+                    }
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+                // as it is a Backup file type we need to submit a COMMIT
+                boolean successCommit = commitATransaction(logString);
+                if (successCommit) {
+                    writeToUiAppend(output, "COMMIT " + logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                    return;
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "COMMIT " + logString + " NO SUCCESS", COLOR_RED);
+                    return;
+                }
+            }
+        });
+
+        authDM0D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Master Application Key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Master Application Key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD0D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Master Key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD1D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 1 = read&write access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Application Key 1 = read&write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD2D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 2 = change access rights key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Application Key 2 = change access rights key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD3D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 3 = read access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Application Key 3 = read access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD4D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 4 = write access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES DEFAULT Application Key 4 = write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
 
         authDM0A.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // native authentication with AES Master Application Key
                 clearOutputFields();
-                writeToUiAppend(output, "legacy authentication with AES Master Application Key");
-                boolean success = legacyAesAuth(MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
+                String logString = "legacy authentication with AES DEFAULT Master Application Key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyAesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
                 if (success) {
-                    writeToUiAppend(output, "legacy authentication with MASTER_APPLICATION_KEY_AES_DEFAULT SUCCESS");
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with MasterApplicationKey (AES default) SUCCESS", COLOR_GREEN);
+                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
                 } else {
-                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with MasterApplicationKey (AES default) NO SUCCESS", COLOR_RED);
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
                 }
             }
         });
@@ -714,11 +982,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             public void onClick(View view) {
                 // native authentication with AES Key 1 = Read & Write Access key
                 clearOutputFields();
-                writeToUiAppend(output, "legacy authentication with AES Key 1 = Read & Write Access key");
-                boolean success = legacyAesAuth(APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES_DEFAULT);
+                String logString = "legacy authentication with AES DEFAULT Key 1 = Read & Write Access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, "legacy authentication with APPLICATION_KEY_RW_AES_DEFAULT SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES default) SUCCESS", COLOR_GREEN);
+                    vibrateShort();
                 } else {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES default) NO SUCCESS", COLOR_RED);
                 }
@@ -1037,6 +1307,7 @@ newKeyVersion - new key version byte.
                 if (freeMemoryInt > -1) {
                     writeToUiAppend(output, logString + ": " + freeMemoryInt + " bytes");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
                 } else {
                     writeToUiAppend(output, logString + ": get an ERROR");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
@@ -1236,13 +1507,180 @@ newKeyVersion - new key version byte.
 
 
     /**
+     * section for files
+     */
+
+    private boolean createAStandardBackupFile(String logString, byte[] dataToWrite) {
+        Log.d(TAG, logString + " data: " + Utilities.byteToHexString(dataToWrite));
+        try {
+            int offset = 0; // write from the beginning
+            int length = 0; // write complete file
+
+            desFireEV3.createFile();
+            desFireEV3.writeData(selectedFileIdInt, offset, dataToWrite);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private byte[] readFromStandardBackupFile(String logString) {
+        Log.d(TAG, logString);
+        byte[] data;
+        try {
+            int offset = 0; // read from the beginning
+            int length = 0; // read complete file
+            data = desFireEV3.readData(selectedFileIdInt, offset, length);
+            return data;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a read access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private boolean writeToStandardBackupFile(String logString, byte[] dataToWrite) {
+        Log.d(TAG, logString + " data: " + Utilities.byteToHexString(dataToWrite));
+        try {
+            int offset = 0; // write from the beginning
+            int length = 0; // write complete file
+            desFireEV3.writeData(selectedFileIdInt, offset, dataToWrite);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    /**
+     * section for write commit
+     */
+
+    private boolean commitATransaction(String logString) {
+        try {
+            Log.d(TAG, "COMMIT " + logString);
+            desFireEV3.commitTransaction();
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            writeToUiAppend(output, "Exception occurred... check LogCat");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
      * section for authentication
      */
 
-    private boolean legacyAesAuth(int keyNumber, byte[] keyToAuthenticate) {
+    private boolean legacyDesAuth(String logString, int keyNumber, byte[] keyToAuthenticate) {
         try {
-            Log.d(TAG, "Authentication with AES legacy");
-            writeToUiAppend(output, "AES legacy auth");
+            Log.d(TAG, logString + "keyNumber "+ keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
+            // build a TDES key from DES
+            byte[] tdesKey = new byte[16];
+            System.arraycopy(keyToAuthenticate, 0, tdesKey, 0, 8);
+            System.arraycopy(keyToAuthenticate, 0, tdesKey, 8, 8);
+            SecretKey originalKey = new SecretKeySpec(tdesKey, 0, tdesKey.length, "TDES");
+            KeyData keyData = new KeyData();
+            keyData.setKey(originalKey);
+            desFireEV3.authenticate(keyNumber, IDESFireEV1.AuthType.Native, KeyType.THREEDES, keyData);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            writeToUiAppend(output, "Exception occurred... check LogCat");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean legacyAesAuth(String logString, int keyNumber, byte[] keyToAuthenticate) {
+        try {
+            Log.d(TAG, logString + "keyNumber "+ keyNumber + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
             SecretKey originalKey = new SecretKeySpec(keyToAuthenticate, 0, keyToAuthenticate.length, "AES");
             KeyData keyData = new KeyData();
             keyData.setKey(originalKey);
@@ -1262,7 +1700,7 @@ newKeyVersion - new key version byte.
             e.printStackTrace();
         } catch (Exception e) {
             writeToUiAppend(output, "Exception occurred... check LogCat");
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "IOException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         }
         return false;
@@ -1375,6 +1813,68 @@ newKeyVersion - new key version byte.
             e.printStackTrace();
         }
         return -1;
+    }
+
+    private byte[] getFileIds(String logString) {
+        byte[] fileIdsByteArray;
+        try {
+            fileIdsByteArray = desFireEV3.getFileIDs();
+            Log.d(TAG, "fileSelect fileIds: " + Utilities.dumpBytes(fileIdsByteArray));
+            return fileIdsByteArray;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private DESFireEV3File.EV3FileSettings getFileSettings(String logString, int fileNumber) {
+        DESFireEV3File.EV3FileSettings fileSettings;
+        try {
+            fileSettings = desFireEV3.getDESFireEV3FileSettings(fileNumber);
+            Log.d(TAG, "fileInformation for file " + fileSettings + " settings:\n" + fileSettings.toString());
+            return fileSettings;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
