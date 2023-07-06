@@ -2314,6 +2314,7 @@
                         android:layout_marginLeft="8dp"
                         android:layout_marginRight="8dp"
                         android:layout_weight="1"
+                        android:enabled="false"
                         android:text="DES" />
 
                     <Button
@@ -2323,6 +2324,7 @@
                         android:layout_marginLeft="1dp"
                         android:layout_marginRight="1dp"
                         android:layout_weight="1"
+                        android:enabled="false"
                         android:text="AES" />
 
                 </LinearLayout>
@@ -2351,7 +2353,7 @@
                         android:layout_marginLeft="8dp"
                         android:layout_marginRight="8dp"
                         android:layout_weight="1"
-                        android:enabled="false"
+                        android:enabled="true"
                         android:text="DES" />
 
                     <Button
@@ -2361,7 +2363,7 @@
                         android:layout_marginLeft="1dp"
                         android:layout_marginRight="1dp"
                         android:layout_weight="1"
-                        android:enabled="false"
+                        android:enabled="true"
                         android:text="AES" />
 
                 </LinearLayout>
