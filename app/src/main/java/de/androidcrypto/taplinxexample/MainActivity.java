@@ -38,6 +38,7 @@ import com.nxp.nfclib.defaultimpl.KeyData;
 import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.DESFireFile;
+import com.nxp.nfclib.desfire.EV1KeySettings;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
 import com.nxp.nfclib.desfire.IDESFireEV2;
@@ -55,7 +56,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -281,9 +281,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private final byte[] VIRTUAL_CARD_KEY_PROXIMITY = Utils.hexStringToByteArray("20200000000000000000000000000000");
     private final int VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT = 33; // 0x21
     private final byte VIRTUAL_CARD_PROXIMITY_KEY_VERSION = (byte) 0x21; // dec 33
-
-
-
 
 
     int COLOR_GREEN = Color.rgb(0, 255, 0);
@@ -766,9 +763,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     comSettings = IDESFireEV1.CommunicationType.Enciphered;
                 }
                 boolean isStandardFile = rbStandardFile.isChecked(); // as there are 2 options only we just just check rbStandardFile
-                boolean success = createAStandardBackupFile(logString,isStandardFile, fileIdInt, comSettings, 1, 2, 3, 4, fileSizeInt);
+                boolean success = createAStandardBackupFile(logString, isStandardFile, fileIdInt, comSettings, 1, 2, 3, 4, fileSizeInt);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                     return;
@@ -853,13 +850,14 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 // create an empty array and copy the dataToWrite to clear the complete standard file
                 byte[] fullDataToWrite = new byte[fileSize];
                 // limit the string
-                if (dataToWriteString.length() > fileSize) dataToWriteString = dataToWriteString.substring(0, fileSize);
+                if (dataToWriteString.length() > fileSize)
+                    dataToWriteString = dataToWriteString.substring(0, fileSize);
                 byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
                 System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
                 Log.d(TAG, logString + " fullDataToWrite: " + Utilities.byteToHexString(fullDataToWrite));
                 boolean success = writeToStandardBackupFile(logString, fullDataToWrite);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     if (!isBackupFile) {
                         // finish the operation
@@ -939,7 +937,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 }
                 boolean success = createAValueFile(logString, fileIdInt, comSettings, 1, 2, 3, 4, lowerLimitInt, upperLimitInt, initialValueInt);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                     vibrateShort();
                     return;
@@ -947,7 +945,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
                     return;
                 }
-           }
+            }
         });
 
         fileValueRead.setOnClickListener(new View.OnClickListener() {
@@ -1253,7 +1251,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, printData("fullDataToWrite", fullDataToWrite));
                 boolean success = writeToARecordFile(logString, fullDataToWrite);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                 } else {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
@@ -1317,14 +1315,15 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 writeToUiAppend(output, "fileType: " + fileTypeName + " recordSize: " + recordSize + " currentRecords: " + currentRecords + " maxRecords: " + maxRecords);
                 /// limit the string
                 dataToWriteString = Utils.getTimestamp() + " " + dataToWriteString;
-                if (dataToWriteString.length() > recordSize) dataToWriteString = dataToWriteString.substring(0, recordSize);
+                if (dataToWriteString.length() > recordSize)
+                    dataToWriteString = dataToWriteString.substring(0, recordSize);
                 byte[] dataToWrite = dataToWriteString.getBytes(StandardCharsets.UTF_8);
                 byte[] fullDataToWrite = new byte[recordSize];
                 System.arraycopy(dataToWrite, 0, fullDataToWrite, 0, dataToWrite.length);
                 writeToUiAppend(output, printData("fullDataToWrite", fullDataToWrite));
                 boolean success = writeToARecordFile(logString, fullDataToWrite);
                 if (success) {
-                    writeToUiAppend(output, logString+ " SUCCESS");
+                    writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
                 } else {
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
@@ -1487,6 +1486,24 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
 
+        authD0A.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Key 0 = Application Master key
+                clearOutputFields();
+                String logString = "legacy authentication with AES DEFAULT Key 0 = Application Master key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, "legacy authentication with APPLICATION_KEY_MASTER_AES_DEFAULT SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with Application Master key (AES default) SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES default) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
         authD1A.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -1512,7 +1529,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES DEFAULT Application Key 2 = change access rights key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES_DEFAULT);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1530,7 +1547,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES DEFAULT Application Key 3 = read access key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES_DEFAULT);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1548,7 +1565,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES DEFAULT Application Key 4 = write access key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES_DEFAULT);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1702,6 +1719,24 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
 
+        authD0AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Master Key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
         authD1AC.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -1727,7 +1762,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES CHANGED Application Key 2 = change access rights key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1745,7 +1780,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES CHANGED Application Key 3 = read access key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1763,7 +1798,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES CHANGED Application Key 4 = write access key";
                 writeToUiAppend(output, logString);
-                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
@@ -1885,9 +1920,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 vibrateShort();
             }
         });
-        
+
         /**
-         * section for change key
+         * section for change key from DEFAULT to CHANGED
          */
 
         changeKeyDM0D.setOnClickListener(new View.OnClickListener() {
@@ -1951,7 +1986,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             @Override
             public void onClick(View view) {
                 clearOutputFields();
-                String logString = "change key 2 = change DES Access Rights Key from DEFAULT to CHANGED with DEFAULT Application Master Key";
+                String logString = "change key 2 = change DES Change Access Rights Key from DEFAULT to CHANGED with DEFAULT Application Master Key";
                 writeToUiAppend(output, logString);
                 boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES, APPLICATION_KEY_CAR_DES_DEFAULT);
                 if (success) {
@@ -2059,7 +2094,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             @Override
             public void onClick(View view) {
                 clearOutputFields();
-                String logString = "change key 2 = change AES Access Rights Key from DEFAULT to CHANGED with DEFAULT Application Master Key";
+                String logString = "change key 2 = change AES Change Access Rights Key from DEFAULT to CHANGED with DEFAULT Application Master Key";
                 writeToUiAppend(output, logString);
                 boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES, APPLICATION_KEY_CAR_AES_DEFAULT);
                 if (success) {
@@ -2105,6 +2140,272 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 }
             }
         });
+
+        /**
+         * section for change key from CHANGED to DEFAULT
+         */
+
+        changeKeyDM0DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 0 = change DES Master Application Key from CHANGED to DEFAULT with DEFAULT Master Application Key";
+                writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
+                boolean success = changeKeyDes(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT, MASTER_APPLICATION_KEY_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD0DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 0 = change DES Application Master Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_MASTER_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD1DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 1 = change DES Read & Write Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES_DEFAULT, APPLICATION_KEY_RW_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD2DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 2 = change DES Access Rights Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES_DEFAULT, APPLICATION_KEY_CAR_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD3DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 3 = change DES Read Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES_DEFAULT, APPLICATION_KEY_R_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD4DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 4 = change DES Write Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES_DEFAULT, APPLICATION_KEY_W_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyDM0AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 0 = change AES Master Application Key from CHANGED to DEFAULT with DEFAULT Master Application Key";
+                writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
+                boolean success = changeKeyAes(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT, MASTER_APPLICATION_KEY_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD0AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 0 = change AES Application Master Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_MASTER_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD1AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 1 = change AES Read & Write Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES_DEFAULT, APPLICATION_KEY_RW_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD2AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 2 = change AES Access Rights Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES_DEFAULT, APPLICATION_KEY_CAR_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD3AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 3 = change AES Read Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES_DEFAULT, APPLICATION_KEY_R_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        changeKeyD4AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 4 = change AES Write Access Key from CHANGED to DEFAULT with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyAes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES_DEFAULT, APPLICATION_KEY_W_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        /**
+         * section for changing all application keys from Default To Changed (personalization)
+         * there are each 2 methods for DES and AES using the Default and Changed Master Application Key
+         */
+
+        changeAllKeysWithDefaultMasterKeyD.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // change all application keys to changed with default master application key
+                clearOutputFields();
+                String logString = "DES change the all application keys to CHANGED with DEFAULT Master Key";
+                writeToUiAppend(output, logString);
+                if (selectedApplicationId == null) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select an application first", COLOR_RED);
+                    return;
+                }
+                // change keys 1 to 4 first to CHANGED, authenticate with DEFAULT Application Master Key
+                boolean success1 = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES, APPLICATION_KEY_RW_DES_DEFAULT);
+                boolean success2 = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES, APPLICATION_KEY_CAR_DES_DEFAULT);
+                boolean success3 = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES, APPLICATION_KEY_R_DES_DEFAULT);
+                boolean success4 = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES, APPLICATION_KEY_W_DES_DEFAULT);
+                writeToUiAppend(output, "change key " + APPLICATION_KEY_RW_NUMBER + " result: " + success1);
+                writeToUiAppend(output, "chagne key " + APPLICATION_KEY_CAR_NUMBER + " result: " + success2);
+                writeToUiAppend(output, "change key " + APPLICATION_KEY_R_NUMBER + " result: " + success3);
+                writeToUiAppend(output, "change key " + APPLICATION_KEY_W_NUMBER + " result: " + success4);
+                // proceed only when all changes are successfully
+                if ((!success1) || (!success2) || (!success3) || (!success4)) {
+                    writeToUiAppend(output, "not all key changes were successfully, change of Application Master Key aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change of all application keys FAILURE", COLOR_RED);
+                    return;
+                }
+                boolean success0 = changeKeyDes(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES, APPLICATION_KEY_MASTER_DES_DEFAULT);
+                writeToUiAppend(output, "change key " + APPLICATION_KEY_MASTER_NUMBER + " result: " + success0);
+                if (!success0) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "change of application master key FAILURE", COLOR_RED);
+                    return;
+                }
+                writeToUiAppend(output, logString + " SUCCESS");
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                vibrateShort();
+            }
+        });
+        
+        
+        
 /*
         authKeyAM0Ev2.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -2405,7 +2706,6 @@ newKeyVersion - new key version byte.
  */
 
 
-
         freeMemory.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -2422,6 +2722,30 @@ newKeyVersion - new key version byte.
                 } else {
                     writeToUiAppend(output, logString + ": get an ERROR");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " FAILURE", COLOR_RED);
+                }
+            }
+        });
+
+        selectMasterApplication.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "select the Master Application";
+                writeToUiAppend(output, logString);
+                boolean success = selectMasterApplication(logString);
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    applicationSelected.setText("000000");
+                    selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    selectedFileId = "";
+                    selectedFileIdInt = -1;
+                    fileSelected.setText("");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
                 }
             }
         });
@@ -2456,6 +2780,38 @@ newKeyVersion - new key version byte.
      * section for applications
      */
 
+    private boolean selectMasterApplication(String logString) {
+        Log.d(TAG, logString);
+        try {
+            desFireEV3.selectApplication(0);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
     /**
      * creates a new application for Mifare DESFireEV3 tag with default settings:
      * .setAppKeySettingsChangeable(true)
@@ -2463,9 +2819,9 @@ newKeyVersion - new key version byte.
      * .setAuthenticationRequiredForFileManagement(false)
      * .setAuthenticationRequiredForDirectoryConfigurationData(false)
      *
-     * @param logString: provide a string for error log
+     * @param logString:             provide a string for error log
      * @param applicationIdentifier: 3 bytes long array with the application identifier
-     * @param numberOfKeysInt: minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
+     * @param numberOfKeysInt:       minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
      * @return true for create success
      * Note: this methods assumes that we can create a new application without prior authentication with the master application key (setup in PICC settings)
      */
@@ -2505,7 +2861,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2535,9 +2891,9 @@ newKeyVersion - new key version byte.
      * .setAuthenticationRequiredForFileManagement(false)
      * .setAuthenticationRequiredForDirectoryConfigurationData(false)
      *
-     * @param logString: provide a string for error log
+     * @param logString:                provide a string for error log
      * @param applicationIdentifierInt: an integer for the application number
-     * @param numberOfKeysInt: minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
+     * @param numberOfKeysInt:          minimum is 1 BUT you should give a minimum of 5 keys as on file creation we will need them. Maximum is 14
      * @return true for create success
      * Note: this methods assumes that we can create a new application without prior authentication with the master application key (setup in PICC settings)
      */
@@ -2578,7 +2934,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2638,7 +2994,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2672,7 +3028,7 @@ newKeyVersion - new key version byte.
             return data;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2705,7 +3061,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2748,7 +3104,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2773,7 +3129,7 @@ newKeyVersion - new key version byte.
 
     }
 
-    private int readFromAValueFile (String logString) {
+    private int readFromAValueFile(String logString) {
         Log.d(TAG, logString);
         int data;
         try {
@@ -2781,7 +3137,7 @@ newKeyVersion - new key version byte.
             return data;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2812,7 +3168,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2843,7 +3199,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2890,7 +3246,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2922,7 +3278,7 @@ newKeyVersion - new key version byte.
             return data;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -2954,7 +3310,7 @@ newKeyVersion - new key version byte.
             return true;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -3109,7 +3465,7 @@ newKeyVersion - new key version byte.
     private boolean changeKeyDes(String logString, int keyNumberToAuthenticate, byte[] keyToAuthenticate, int keyNumberToChange, byte[] newKey, byte[] oldKey) {
         try {
             Log.d(TAG, logString + " keyNumberToAuthenticate " + keyNumberToAuthenticate + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
-            Log.d(TAG,  "keyNumberToChange " + keyNumberToChange + printData(" oldKey", oldKey) + " | " + printData("newKey", newKey));
+            Log.d(TAG, "keyNumberToChange " + keyNumberToChange + printData(" oldKey", oldKey) + " | " + printData("newKey", newKey));
             Log.d(TAG, "authenticate the change");
             desFireEV3.authenticate(keyNumberToAuthenticate, IDESFireEV1.AuthType.Native, KeyType.THREEDES, getDesKeyFromByteArray(keyToAuthenticate));
             Log.d(TAG, "change the key");
@@ -3140,11 +3496,10 @@ newKeyVersion - new key version byte.
     private boolean changeKeyAes(String logString, int keyNumberToAuthenticate, byte[] keyToAuthenticate, int keyNumberToChange, byte[] newKey, byte[] oldKey) {
         try {
             Log.d(TAG, logString + " keyNumberToAuthenticate " + keyNumberToAuthenticate + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
-            Log.d(TAG,  "keyNumberToChange " + keyNumberToChange + printData(" oldKey", oldKey) + " | " + printData("newKey", newKey));
+            Log.d(TAG, "keyNumberToChange " + keyNumberToChange + printData(" oldKey", oldKey) + " | " + printData("newKey", newKey));
             Log.d(TAG, "authenticate the change");
-            desFireEV3.authenticate(keyNumberToAuthenticate, IDESFireEV1.AuthType.Native, KeyType.AES128, getAesKeyFromByteArray(keyToAuthenticate));
+            desFireEV3.authenticate(keyNumberToAuthenticate, IDESFireEV1.AuthType.AES, KeyType.AES128, getAesKeyFromByteArray(keyToAuthenticate));
             Log.d(TAG, "change the key");
-            //EV3ApplicationKeySettings.Builder ev3ApplicationKeySettings = new EV3ApplicationKeySettings.Builder();
             byte newKeyVersion = (byte) 0x00;
             desFireEV3.changeKey(keyNumberToChange, KeyType.AES128, oldKey, newKey, newKeyVersion);
             return true;
@@ -3223,7 +3578,7 @@ newKeyVersion - new key version byte.
             return freeMemory;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -3254,7 +3609,7 @@ newKeyVersion - new key version byte.
             return fileIdsByteArray;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
@@ -3285,7 +3640,7 @@ newKeyVersion - new key version byte.
             return fileSettings;
         } catch (InvalidResponseLengthException e) {
             Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
-            writeToUiAppendBorderColor(errorCode, errorCodeLayout,  logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
             e.printStackTrace();
         } catch (UsageException e) {
             Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
