@@ -1355,6 +1355,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with DES DEFAULT Master Application Key";
                 writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
                 boolean success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
@@ -1464,6 +1470,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 clearOutputFields();
                 String logString = "legacy authentication with AES DEFAULT Master Application Key";
                 writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
                 boolean success = legacyAesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES_DEFAULT);
                 if (success) {
                     writeToUiAppend(output, logString + " SUCCESS");
@@ -1492,6 +1504,414 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 }
             }
         });
+
+        authD2A.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 2 = change access rights key
+                clearOutputFields();
+                String logString = "legacy authentication with AES DEFAULT Application Key 2 = change access rights key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD3A.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 3 = read access key
+                clearOutputFields();
+                String logString = "legacy authentication with AES DEFAULT Application Key 3 = read access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD4A.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 4 = write access key
+                clearOutputFields();
+                String logString = "legacy authentication with AES DEFAULT Application Key 4 = write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        /**
+         * section for authentication with changed keys
+         */
+
+        authDM0DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Master Application Key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Master Application Key";
+                writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
+                boolean success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD0DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Master Key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD1DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 1 = read&write access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Application Key 1 = read&write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD2DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 2 = change access rights key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Application Key 2 = change access rights key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD3DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 3 = read access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Application Key 3 = read access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD4DC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with DES Application Key 4 = write access key
+                clearOutputFields();
+                String logString = "legacy authentication with DES CHANGED Application Key 4 = write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+
+        authDM0AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Master Application Key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Master Application Key";
+                writeToUiAppend(output, logString);
+                // check that the Master Application is selected
+                if (!Arrays.equals(selectedApplicationId, MASTER_APPLICATION_IDENTIFIER)) {
+                    writeToUiAppend(output, "you need to select the Master Application first, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Nothing to do", COLOR_GREEN);
+                    return;
+                }
+                boolean success = legacyAesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD1AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Key 1 = Read & Write Access key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Key 1 = Read & Write Access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyAesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES);
+                if (success) {
+                    writeToUiAppend(output, "legacy authentication with APPLICATION_KEY_RW_AES_CHANGED SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES CHANGED) SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "legacy auth with RW access key (AES CHANGED) NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD2AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 2 = change access rights key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Application Key 2 = change access rights key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD3AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 3 = read access key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Application Key 3 = read access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        authD4AC.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // native authentication with AES Application Key 4 = write access key
+                clearOutputFields();
+                String logString = "legacy authentication with AES CHANGED Application Key 4 = write access key";
+                writeToUiAppend(output, logString);
+                boolean success = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+            }
+        });
+
+        /**
+         * section for checking all auth keys
+         */
+
+        authCheckAllKeysD.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // check the authentication with all access keys
+                clearOutputFields();
+                String logString = "check all DES authentication keys";
+                writeToUiAppend(output, logString);
+                if (selectedApplicationId == null) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select an application first", COLOR_RED);
+                    return;
+                }
+                boolean success0 = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT);
+                boolean success0C = false;
+                if (!success0) {
+                    success0C = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES);
+                }
+                boolean success1 = legacyDesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES_DEFAULT);
+                boolean success1C = false;
+                if (!success1) {
+                    success1C = legacyDesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_DES);
+                }
+                boolean success2 = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES_DEFAULT);
+                boolean success2C = false;
+                if (!success2) {
+                    success2C = legacyDesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES);
+                }
+                boolean success3 = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES_DEFAULT);
+                boolean success3C = false;
+                if (!success3) {
+                    success3C = legacyDesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_DES);
+                }
+                boolean success4 = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES_DEFAULT);
+                boolean success4C = false;
+                if (!success4) {
+                    success4C = legacyDesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_DES);
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append("check of all DES auth keys:").append("\n");
+                sb.append("key 0 master default: ").append(success0).append("\n");
+                sb.append("key 0 master changed: ").append(success0C).append("\n");
+                sb.append("key 1 read&write default: ").append(success1).append("\n");
+                sb.append("key 1 read&write changed: ").append(success1C).append("\n");
+                sb.append("key 2 CAR default: ").append(success2).append("\n");
+                sb.append("key 2 CAR changed: ").append(success2C).append("\n");
+                sb.append("key 3 read default: ").append(success3).append("\n");
+                sb.append("key 3 read changed: ").append(success3C).append("\n");
+                sb.append("key 4 write default: ").append(success4).append("\n");
+                sb.append("key 4 write changed: ").append(success4C).append("\n");
+                writeToUiAppend(output, sb.toString());
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " see above results", COLOR_GREEN);
+                vibrateShort();
+            }
+        });
+
+        authCheckAllKeysA.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // check the authentication with all access keys
+                clearOutputFields();
+                String logString = "check all AES authentication keys";
+                writeToUiAppend(output, logString);
+                if (selectedApplicationId == null) {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "you need to select an application first", COLOR_RED);
+                    return;
+                }
+                boolean success0 = legacyAesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+                boolean success0C = false;
+                if (!success0) {
+                    success0C = legacyAesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES);
+                }
+                boolean success1 = legacyAesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES_DEFAULT);
+                boolean success1C = false;
+                if (!success1) {
+                    success1C = legacyAesAuth(logString, APPLICATION_KEY_RW_NUMBER, APPLICATION_KEY_RW_AES);
+                }
+                boolean success2 = legacyAesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES_DEFAULT);
+                boolean success2C = false;
+                if (!success2) {
+                    success2C = legacyAesAuth(logString, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_AES);
+                }
+                boolean success3 = legacyAesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES_DEFAULT);
+                boolean success3C = false;
+                if (!success3) {
+                    success3C = legacyAesAuth(logString, APPLICATION_KEY_R_NUMBER, APPLICATION_KEY_R_AES);
+                }
+                boolean success4 = legacyAesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES_DEFAULT);
+                boolean success4C = false;
+                if (!success4) {
+                    success4C = legacyAesAuth(logString, APPLICATION_KEY_W_NUMBER, APPLICATION_KEY_W_AES);
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append("check of all AES auth keys:").append("\n");
+                sb.append("key 0 master default: ").append(success0).append("\n");
+                sb.append("key 0 master changed: ").append(success0C).append("\n");
+                sb.append("key 1 read&write default: ").append(success1).append("\n");
+                sb.append("key 1 read&write changed: ").append(success1C).append("\n");
+                sb.append("key 2 CAR default: ").append(success2).append("\n");
+                sb.append("key 2 CAR changed: ").append(success2C).append("\n");
+                sb.append("key 3 read default: ").append(success3).append("\n");
+                sb.append("key 3 read changed: ").append(success3C).append("\n");
+                sb.append("key 4 write default: ").append(success4).append("\n");
+                sb.append("key 4 write changed: ").append(success4C).append("\n");
+                writeToUiAppend(output, sb.toString());
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " see above results", COLOR_GREEN);
+                vibrateShort();
+            }
+        });
+        
+        /**
+         * section for change key
+         */
+
+        changeKeyD2D.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "change key 2 = change access rights key from DEFAULT to CHANGED with DEFAULT Application Master Key";
+                writeToUiAppend(output, logString);
+                boolean success = changeKeyDes(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT, APPLICATION_KEY_CAR_NUMBER, APPLICATION_KEY_CAR_DES, APPLICATION_KEY_CAR_DES_DEFAULT);
+                if (success) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                    vibrateShort();
+                } else {
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+                }
+
+
+
+
+            }
+        });
+
+        
 /*
         authKeyAM0Ev2.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -2490,6 +2910,43 @@ newKeyVersion - new key version byte.
     }
 
     /**
+     * section for change key
+     */
+
+    private boolean changeKeyDes(String logString, int keyNumberToAuthenticate, byte[] keyToAuthenticate, int keyNumberToChange, byte[] newKey, byte[] oldKey) {
+        try {
+            Log.d(TAG, logString + " keyNumberToAuthenticate " + keyNumberToAuthenticate + " keyToAuthenticate " + Utilities.dumpBytes(keyToAuthenticate));
+            Log.d(TAG,  "keyNumberToChange " + keyNumberToChange + printData(" oldKey", oldKey) + " | " + printData("newKey", newKey));
+            Log.d(TAG, "authenticate the change");
+            desFireEV3.authenticate(keyNumberToAuthenticate, IDESFireEV1.AuthType.Native, KeyType.THREEDES, getDesKeyFromByteArray(keyToAuthenticate));
+            Log.d(TAG, "change the key");
+            //EV3ApplicationKeySettings.Builder ev3ApplicationKeySettings = new EV3ApplicationKeySettings.Builder();
+            byte newKeyVersion = (byte) 0x00;
+            desFireEV3.changeKey(keyNumberToChange, KeyType.THREEDES, getTdesKeyFromDesKeyByteArray(oldKey), getTdesKeyFromDesKeyByteArray(newKey), newKeyVersion);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the  NXP one
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (Exception e) {
+            writeToUiAppend(output, "Exception occurred... check LogCat");
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+
+    }
+
+
+    /**
      * section for helper methods
      */
 
@@ -2633,8 +3090,38 @@ newKeyVersion - new key version byte.
      * section for key conversion
      */
 
+    private byte[] getTdesKeyFromDesKeyByteArray(byte[] desKey) {
+        if (desKey == null) {
+            Log.e(TAG, "getTdesKeyFromDesKeyByteArray desKey is NULL, aborted");
+            return null;
+        }
+        if (desKey.length != 8) {
+            Log.e(TAG, "getTdesKeyFromDesKeyByteArray desKey length is not 8, found " + desKey.length + ", aborted");
+            return null;
+        }
+        byte[] tdesKey = new byte[16];
+        System.arraycopy(desKey, 0, tdesKey, 0, 8);
+        System.arraycopy(desKey, 0, tdesKey, 8, 8);
+        return tdesKey;
+    }
+
     private KeyData getDesKeyFromByteArray(byte[] desKeyBytes) {
-        SecretKey originalKey = new SecretKeySpec(desKeyBytes, 0, desKeyBytes.length, "DESede");
+        // check if the key is 8 or 16 bytes long
+        SecretKey originalKey;
+        if ((desKeyBytes != null) && (desKeyBytes.length == 8)) {
+            // build a 3KTDES key from DES
+            //byte[] tdesKey = new byte[16];
+            byte[] tdesKey = new byte[24];
+            System.arraycopy(desKeyBytes, 0, tdesKey, 0, 8);
+            System.arraycopy(desKeyBytes, 0, tdesKey, 8, 8);
+            System.arraycopy(desKeyBytes, 0, tdesKey, 16, 8);
+            originalKey = new SecretKeySpec(tdesKey, 0, tdesKey.length, "DESede");
+        } else if ((desKeyBytes != null) && (desKeyBytes.length == 16)) {
+            originalKey = new SecretKeySpec(desKeyBytes, 0, desKeyBytes.length, "DESede");
+        } else {
+            Log.e(TAG, "getDesKeyFromByteArray desKeyBytes length is not 8 or 16, aborted");
+            return null;
+        }
         KeyData keyData = new KeyData();
         keyData.setKey(originalKey);
         return keyData;
