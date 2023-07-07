@@ -40,6 +40,7 @@ import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.DESFireFile;
 import com.nxp.nfclib.desfire.EV1KeySettings;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
+import com.nxp.nfclib.desfire.EV3CPICCConfigurationSettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
 import com.nxp.nfclib.desfire.IDESFireEV2;
 import com.nxp.nfclib.desfire.IDESFireEV3;
@@ -240,6 +241,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     // testing
     private Button createApplication1;
+    private Button transactionTimer;
+
 
     // constants
     private String lineSeparator = "----------";
@@ -477,6 +480,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         changeAllKeysWithChangedMasterKeyDC = findViewById(R.id.btnChangeKeysAllMasterChangedDC);
         // change all application keys AES from Changed to Default with Changed Master Key
         changeAllKeysWithChangedMasterKeyAC = findViewById(R.id.btnChangeKeysAllMasterChangedAC);
+
+
+        // testing
+        transactionTimer = findViewById(R.id.btnTransactionTimer);
+
 
         /* Initialize the library and register to this activity */
         initializeLibrary();
@@ -2911,6 +2919,69 @@ newKeyVersion - new key version byte.
         });
 
         // testing
+
+        transactionTimer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // work with transaction timer
+
+                // https://www.youtube.com/watch?v=FCEWF-EmrV8
+                // individual enablement for each application
+                // different transaction timer for different applications
+                // the transaction timer is enabled by using the SetConfiguration command with option 0x55
+                // the value of the transaction timer can be set for each application individually (1, 10 or 100 can be chosen)
+                // once enabled timer settings will be reflected in the response to the AuthenticateEv2First
+                // command in the parameter PDCap 2.2
+                // the timer starts counting for every application selection
+
+                //
+                // get the default application settings
+                String logString = "Transaction Timer";
+                try {
+                    int numberOfKeysInt = 5;
+                    KeyType keyType = KeyType.AES128;
+                    EV3ApplicationKeySettings applicationKeySettings = getApplicationSettingsDefault(numberOfKeysInt, keyType);
+                    if (applicationKeySettings == null) {
+                        Log.e(TAG, logString + " the applicationKeysSettings are NULL, aborted");
+                        writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " could not get the application settings, aborted", COLOR_RED);
+                    }
+                    // important: first select the Master Application ('0')
+                    desFireEV3.selectApplication(0);
+                    // depending on MasterKey settings an authentication is necessary, skipped here
+                    byte[] applicationIdentifier = Utils.hexStringToByteArray("998877");
+                    desFireEV3.createApplication(applicationIdentifier, applicationKeySettings);
+                    EV3CPICCConfigurationSettings ev3CPICCConfigurationSettings = new EV3CPICCConfigurationSettings();
+                    ev3CPICCConfigurationSettings.setPCDCap((byte) 0, (byte) 0, (byte) 0, (byte) 0);
+
+                    //writeToUiAppend(output, "create a new application done," + printData("new appID", applicationIdentifier));
+                    //writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+
+                } catch (InvalidResponseLengthException e) {
+                    Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (UsageException e) {
+                    Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+
+            }
+        });
+
 
         /*
         createApplication1.setOnClickListener(new View.OnClickListener() {

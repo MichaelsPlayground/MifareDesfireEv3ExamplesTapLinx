@@ -2762,6 +2762,14 @@
                         android:layout_weight="1"
                         android:text="key settings" />
 
+                    <Button
+                        android:id="@+id/btnTransactionTimer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="8dp"
+                        android:layout_weight="1"
+                        android:text="transact timer" />
+
                 </LinearLayout>
 
                 <LinearLayout
