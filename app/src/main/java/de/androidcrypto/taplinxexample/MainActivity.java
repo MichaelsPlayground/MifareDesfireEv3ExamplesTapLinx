@@ -243,6 +243,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button createApplication1;
     private Button transactionTimer;
 
+    private Button formatNdefT4T;
+
 
     // constants
     private String lineSeparator = "----------";
@@ -330,6 +332,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         formatPicc = findViewById(R.id.btnFormatPicc);
         selectMasterApplication = findViewById(R.id.btnSelectMasterApplication);
         //changeMasterKeyToAes = findViewById(R.id.btnChangeMasterKeyToAes);
+        formatNdefT4T = findViewById(R.id.btnFormatT4T);
+
+
 
         // application handling
         llApplicationHandling = findViewById(R.id.llApplications);
@@ -3005,7 +3010,122 @@ newKeyVersion - new key version byte.
             }
         });
 */
+
+
+        /**
+         * section for general workflow
+         */
+
+        formatPicc.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "format PICC";
+                writeToUiAppend(output, logString);
+                boolean success = selectMasterApplication(logString);
+                if (!success) {
+                    writeToUiAppend(output, "select MasterApplication NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,"select MasterApplication NOT Success, aborted", COLOR_RED);
+                }
+                success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (!success) {
+                    writeToUiAppend(output, "auth with DES MasterApplication Key NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "auth with DES MasterApplication Key  NOT Success, aborted", COLOR_RED);
+                }
+                success = formatPiccCommand(logString);
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    //applicationSelected.setText("000000");
+                    //selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    //selectedFileId = "";
+                    //selectedFileIdInt = -1;
+                    //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
+        formatNdefT4T.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "formatNdefT4T";
+                writeToUiAppend(output, logString);
+                boolean success = formatT4TCommand(logString, 256);
+                /*
+                if (!success) {
+                    writeToUiAppend(output, "select MasterApplication NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,"select MasterApplication NOT Success, aborted", COLOR_RED);
+                }
+                success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (!success) {
+                    writeToUiAppend(output, "auth with DES MasterApplication Key NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "auth with DES MasterApplication Key  NOT Success, aborted", COLOR_RED);
+                }
+                success = formatPiccCommand(logString);
+
+                 */
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    //applicationSelected.setText("000000");
+                    //selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    //selectedFileId = "";
+                    //selectedFileIdInt = -1;
+                    //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
     }
+
+    /**
+     * empty one
+     */
+
+    private boolean emptyTask(String logString) {
+        Log.d(TAG, logString);
+        try {
+            desFireEV3.selectApplication(0);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 
     /**
      * section for applications
@@ -3188,6 +3308,109 @@ newKeyVersion - new key version byte.
         return false;
     }
 
+    /**
+     * section for auth handling
+     */
+    private boolean authenticate(String logString, byte  keyNumber, byte[] keyData) {
+        Log.d(TAG, logString);
+        try {
+            desFireEV3.selectApplication(0);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * section for general handling
+     */
+
+    private boolean formatPiccCommand(String logString) {
+        Log.d(TAG, logString);
+        try {
+            desFireEV3.format();
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean formatT4TCommand(String logString, int fileSize) {
+        Log.d(TAG, logString);
+        try {
+            desFireEV3.formatT4T(fileSize);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * section for service methods
+     */
 
     private byte[] wrapMessage(byte command, byte[] parameters) throws IOException {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
