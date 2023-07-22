@@ -3640,7 +3640,10 @@ fileSettings - File to be created with these file settings which are present in 
 builders of different derived class of FileSettings to create file settings object,
 
 see DESFireEV3File.StdEV3DataFileSettings file:///Users/michaelfehr/Downloads/TapLinx%20SDK%203-0-0%20JavaDoc/index.html createFile()
+
  */
+
+    // todo missing: write NDEF container, see DesfirePlayground NDEF
 
     private boolean createAStandardNdefFile(String logString, int fileNumber, byte[] isoFileId, IDESFireEV1.CommunicationType communicationType, int rwKeyInt, int carKeyInt, int rKeyInt, int wKeyInt, int fileSize) {
         Log.d(TAG, logString);
