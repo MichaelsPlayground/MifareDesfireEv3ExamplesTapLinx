@@ -35,6 +35,8 @@ import com.nxp.nfclib.CardType;
 import com.nxp.nfclib.KeyType;
 import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
+import com.nxp.nfclib.desfire.DESFireEV3CFile;
+import com.nxp.nfclib.desfire.DESFireEV3CFileSettingsHelper;
 import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.DESFireFile;
@@ -243,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button createApplication1;
     private Button transactionTimer;
 
-    private Button formatNdefT4T;
+    private Button formatNdefT4T, sdmIsEnabled, sdmEnable;
 
 
     // constants
@@ -333,7 +335,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         selectMasterApplication = findViewById(R.id.btnSelectMasterApplication);
         //changeMasterKeyToAes = findViewById(R.id.btnChangeMasterKeyToAes);
         formatNdefT4T = findViewById(R.id.btnFormatT4T);
-
+        sdmIsEnabled = findViewById(R.id.btnSdmIsEnabled);
+        sdmEnable = findViewById(R.id.btnSdmEnable);
 
 
         // application handling
@@ -3089,6 +3092,82 @@ newKeyVersion - new key version byte.
             }
         });
 
+        sdmIsEnabled.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "sdmIsEnabled";
+                writeToUiAppend(output, logString);
+                boolean success = sdmIsEnabledCommand(logString);
+                /*
+                if (!success) {
+                    writeToUiAppend(output, "select MasterApplication NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,"select MasterApplication NOT Success, aborted", COLOR_RED);
+                }
+                success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (!success) {
+                    writeToUiAppend(output, "auth with DES MasterApplication Key NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "auth with DES MasterApplication Key  NOT Success, aborted", COLOR_RED);
+                }
+                success = formatPiccCommand(logString);
+
+                 */
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    //applicationSelected.setText("000000");
+                    //selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    //selectedFileId = "";
+                    //selectedFileIdInt = -1;
+                    //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
+        sdmEnable.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "sdmEnable";
+                writeToUiAppend(output, logString);
+                boolean success = sdmEnableCommand(logString);
+                /*
+                if (!success) {
+                    writeToUiAppend(output, "select MasterApplication NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,"select MasterApplication NOT Success, aborted", COLOR_RED);
+                }
+                success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (!success) {
+                    writeToUiAppend(output, "auth with DES MasterApplication Key NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "auth with DES MasterApplication Key  NOT Success, aborted", COLOR_RED);
+                }
+                success = formatPiccCommand(logString);
+
+                 */
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    //applicationSelected.setText("000000");
+                    //selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    //selectedFileId = "";
+                    //selectedFileIdInt = -1;
+                    //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
     }
 
     /**
@@ -3408,6 +3487,81 @@ newKeyVersion - new key version byte.
         return false;
     }
 
+    private boolean sdmIsEnabledCommand(String logString) {
+        Log.d(TAG, logString);
+        try {
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, 2);
+            DESFireEV3File.StdEV3DataFileSettings stdFileSettings = (DESFireEV3File.StdEV3DataFileSettings) fileSettings;
+            int fileSize = stdFileSettings.getFileSize();
+            boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
+            writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean sdmEnableCommand(String logString) {
+        Log.d(TAG, logString);
+        try {
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, 2);
+            DESFireEV3File.StdEV3DataFileSettings stdFileSettings = (DESFireEV3File.StdEV3DataFileSettings) fileSettings;
+            int fileSize = stdFileSettings.getFileSize();
+            boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
+            writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
+            if (!isSDMEnabled) {
+                writeToUiAppend(output, "trying to enable SDM feature");
+                stdFileSettings.setSDMEnabled(true);
+                writeToUiAppend(output, "SDM feature should be enabled now");
+            }
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     /**
      * section for service methods
      */
@@ -3471,6 +3625,66 @@ newKeyVersion - new key version byte.
         }
         return false;
     }
+
+
+/*
+void createFile(int fileNumber,
+                byte[] isoFileID,
+                DESFireEV3File.EV3FileSettings fileSettings)
+Creates a file within a DESFire EV3 application. This API allows flexibility to use ISO file ID.
+This method also accepts the ISO file ID that is used in ISO 7816-4 operations.
+Parameters:
+fileNumber - File to be created with this file number.
+isoFileID - ISO file identifier of file.
+fileSettings - File to be created with these file settings which are present in FileSettings Object.use
+builders of different derived class of FileSettings to create file settings object,
+
+see DESFireEV3File.StdEV3DataFileSettings file:///Users/michaelfehr/Downloads/TapLinx%20SDK%203-0-0%20JavaDoc/index.html createFile()
+ */
+
+    private boolean createAStandardNdefFile(String logString, int fileNumber, byte[] isoFileId, IDESFireEV1.CommunicationType communicationType, int rwKeyInt, int carKeyInt, int rKeyInt, int wKeyInt, int fileSize) {
+        Log.d(TAG, logString);
+        try {
+            byte readAccess = (byte) (rKeyInt & 0xff);
+            byte writeAccess = (byte) (wKeyInt & 0xff);
+            byte readWriteAccess = (byte) (rwKeyInt & 0xff);
+            byte changeAccess = (byte) (carKeyInt & 0xff);
+            DESFireEV3File.StdEV3DataFileSettings fileSettings;
+            fileSettings = new DESFireEV3File.StdEV3DataFileSettings(communicationType, readAccess, writeAccess, readWriteAccess, changeAccess, fileSize);
+            fileSettings.setSDMEnabled(true);
+            fileSettings.setUIDMirroringEnabled(true);
+            byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+            fileSettings.setUidOffset(sdmUidOffset);
+            byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            fileSettings.setUidOffset(sdmPiccOffset);
+            desFireEV3.createFile(fileNumber, isoFileId, fileSettings);
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 
     private byte[] readFromStandardBackupFile(String logString) {
         Log.d(TAG, logString);

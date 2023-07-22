@@ -2819,20 +2819,20 @@
                     android:text="form T4T" />
 
                 <Button
-                    android:id="@+id/btnxx8"
+                    android:id="@+id/btnSdmIsEnabled"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="8dp"
                     android:layout_weight="1"
-                    android:text="xx" />
+                    android:text="isSdmEnabl" />
 
                 <Button
-                    android:id="@+id/btnSelectMasterApplicationXX"
+                    android:id="@+id/btnSdmEnable"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="8dp"
                     android:layout_weight="1"
-                    android:text="xx" />
+                    android:text="SDM enable" />
 
             </LinearLayout>
 
