@@ -36,6 +36,7 @@ import com.nxp.nfclib.KeyType;
 import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
 import com.nxp.nfclib.desfire.DESFireEV3File;
+import com.nxp.nfclib.desfire.DESFireEV3FileSettingsHelper;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.DESFireFile;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
@@ -245,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     // playing with secure data message
     private Button createNdef, createNdefSdm;
     private Button formatNdefT4T, sdmIsEnabled, sdmEnable;
-
+    private Button changeFileSettingsToSdm;
 
     // constants
     private String lineSeparator = "----------";
@@ -339,6 +340,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         formatNdefT4T = findViewById(R.id.btnFormatT4T);
         sdmIsEnabled = findViewById(R.id.btnSdmIsEnabled);
         sdmEnable = findViewById(R.id.btnSdmEnable);
+        changeFileSettingsToSdm = findViewById(R.id.btnChangeFileSettingsToSdm);
 
 
         // application handling
@@ -3251,6 +3253,44 @@ newKeyVersion - new key version byte.
             }
         });
 
+        changeFileSettingsToSdm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "changeFileSettingsToSdm";
+                writeToUiAppend(output, logString);
+                boolean success = changeFileSettingsToSdmCommand(logString);
+                /*
+                if (!success) {
+                    writeToUiAppend(output, "select MasterApplication NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout,"select MasterApplication NOT Success, aborted", COLOR_RED);
+                }
+                success = legacyDesAuth(logString, MASTER_APPLICATION_KEY_NUMBER, MASTER_APPLICATION_KEY_DES_DEFAULT);
+                if (!success) {
+                    writeToUiAppend(output, "auth with DES MasterApplication Key NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "auth with DES MasterApplication Key  NOT Success, aborted", COLOR_RED);
+                }
+                success = formatPiccCommand(logString);
+
+                 */
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    //applicationSelected.setText("000000");
+                    //selectedApplicationId = MASTER_APPLICATION_IDENTIFIER.clone(); // 00 00 00
+                    //selectedFileId = "";
+                    //selectedFileIdInt = -1;
+                    //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
     }
 
     /**
@@ -3645,6 +3685,80 @@ newKeyVersion - new key version byte.
         return false;
     }
 
+    //changeFileSettingsToSdmCommand
+    public boolean changeFileSettingsToSdmCommand(String logString) {
+        Log.d(TAG, logString);
+        try {
+
+            // first select master app
+            // important: first select the Master Application ('0')
+            writeToUiAppend(output, logString + " step 1 select master application");
+            desFireEV3.selectApplication(0);
+
+            writeToUiAppend(output, logString + " step 2 select ndef application 00 00 01");
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            writeToUiAppend(output, logString + " step 3 auth with application master key");
+            boolean suc = newAesEv2Auth(APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+            if (!suc) {
+                Log.e(TAG, "Authentication failure");
+                return false;
+            }
+
+            writeToUiAppend(output, logString + " step 4 change file settings");
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, 2);
+            DESFireEV3File.StdEV3DataFileSettings stdFileSettings = (DESFireEV3File.StdEV3DataFileSettings) fileSettings;
+            int fileSize = stdFileSettings.getFileSize();
+            boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
+            writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
+            if (!isSDMEnabled) {
+                writeToUiAppend(output, "trying to enable SDM feature");
+                stdFileSettings.setSDMEnabled(true);
+                stdFileSettings.setUIDMirroringEnabled(true);
+                byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setUidOffset(sdmUidOffset);
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setUidOffset(sdmPiccOffset);
+// ASCII Encoding mode: 1
+//F121h = SDMAccessRights (RFU: 0xF, FileAR.SDMCtrRet = 0x1, FileAR.SDMMetaRead: 0x2, FileAR.SDMFileRead: 0x1)
+
+                byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+                stdFileSettings.setSdmAccessRights(sdmAccessRights);
+
+                DESFireEV3File.EV3FileSettings desFireEV3FileSettings = (DESFireEV3File.EV3FileSettings) stdFileSettings;
+                writeToUiAppend(output, logString + " step 4 change file settings command to PICC");
+                desFireEV3.changeDESFireEV3FileSettings(2, desFireEV3FileSettings);
+                writeToUiAppend(output, "SDM feature should be enabled now");
+                return true;
+            }
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     /**
      * section for service methods
      */
@@ -3929,11 +4043,14 @@ fileSize - Size of the Standard Data File
 /*
             // this part is to add SDM enabling
             fileSettings02.setSDMEnabled(true);
-            fileSettings02.setUIDMirroringEnabled(true);
+            fileSettings02.setUIDMirroringEnabled(false);
             byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
             fileSettings02.setUidOffset(sdmUidOffset);
-            byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
-            fileSettings02.setUidOffset(sdmPiccOffset);
+            //byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            //fileSettings02.setPiccDataOffset(sdmPiccOffset);
+            fileSettings02.setSDMReadCounterEnabled(true);
+            byte[] sdmReadCounterOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            fileSettings02.setSdmReadCounterOffset(sdmReadCounterOffset);
 */
             Log.d(TAG, "step 6: create a standard data file 02");
             desFireEV3.createFile(FILE_ID_02, ISO_FILE_ID_02, fileSettings02);

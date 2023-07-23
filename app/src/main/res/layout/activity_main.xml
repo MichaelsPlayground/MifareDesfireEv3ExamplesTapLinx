@@ -2827,12 +2827,12 @@
                     android:text="cr ndef sdm" />
 
                 <Button
-                    android:id="@+id/btnxx9"
+                    android:id="@+id/btnChangeFileSettingsToSdm"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="8dp"
                     android:layout_weight="1"
-                    android:text="xx" />
+                    android:text="ndef to SDM" />
 
             </LinearLayout>
 
