@@ -3924,7 +3924,8 @@ fileSize - Size of the Standard Data File
             DESFireEV3File.StdEV3DataFileSettings fileSettings02;
             // this file is using nearly the same access settings as file 01
             byte changeAccess02 = (byte) (0x00);
-            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
+            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_02_SIZE);
+            //fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
 /*
             // this part is to add SDM enabling
             fileSettings02.setSDMEnabled(true);
@@ -3940,13 +3941,36 @@ fileSize - Size of the Standard Data File
             // step 7: write to standard file 02
 
             // data from NTAG424DNA Feature & Hints
+            byte[] ndefHeaderUrl = Utils.hexStringToByteArray("0022D1011E5504"); // 7 bytes // append: 0022
             byte[] ndefSampleData = Utils.hexStringToByteArray("63686F6F73652E75726C2E636F6D2F6E7461673432343F653D303030303030303030303030303030303030303030303030303030303030303026633D30303030303030303030303030303030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
             // https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000
             writeToUiAppend(output, "ndefSampleData: " + new String(ndefSampleData, StandardCharsets.UTF_8));
             writeToUiAppend(output, printData("ndefSampleData",ndefSampleData));
 
+            byte[] ndefMessage = new byte[(ndefHeaderUrl.length) + ndefSampleData.length];
+            System.arraycopy(ndefHeaderUrl, 0, ndefMessage, 0, ndefHeaderUrl.length);
+            System.arraycopy(ndefSampleData, 0, ndefMessage, ndefHeaderUrl.length, ndefSampleData.length);
+
+            ndefMessage = Utils.hexStringToByteArray("0056D10152550463686F6F73652E75726C2E636F6D2F6E7461673432343F653D3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
+/*
+# NDEF file contents:
+[000] 00 56 D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 |.V..RU.choose.ur|
+[010] 6C 2E 63 6F 6D 2F 6E 74 61 67 34 32 34 3F 65 3D |l.com/ntag424?e=|
+[020] 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 |0000000000000000|
+[030] 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 |0000000000000000|
+[040] 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 |0000000000000000|
+[050] 30 30 30 30 30 30 39 39 00 00 00 00 00 00 00 00 |00000099........|
+ */
+            writeToUiAppend(output, printData("ndefMessage",ndefMessage));
+
+            // working ndefMessage after writing by NfcNdefExample
+            //byte[] ndefMessageExample = Utils.hexStringToByteArray("0022D1011E5504736F6D652E6578616D706C652E636F6D26613D31323334353637383930");
+            //                                                                                some.example.com&a=1234567890  29 chars = 0x13
+            //                                                                                choose.url.com/ntag424?e=0000  29 chars = 0x13
+            //writeToUiAppend(output, printData("ndefMessageExample",ndefMessageExample));
+
             Log.d(TAG, "step 7: write to the standard data file 02 (NDEF container)");
-            desFireEV3.writeData(FILE_ID_02, 0, ndefSampleData);
+            desFireEV3.writeData(FILE_ID_02, 0, ndefMessage);
             //byte[] NDEF_FILE_02 = Utils.hexStringToByteArray("0000"); // empty NDEF container
             //desFireEV3.writeData(FILE_ID_02, 0, NDEF_FILE_02);
 
