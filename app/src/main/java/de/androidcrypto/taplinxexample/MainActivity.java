@@ -35,12 +35,9 @@ import com.nxp.nfclib.CardType;
 import com.nxp.nfclib.KeyType;
 import com.nxp.nfclib.NxpNfcLib;
 import com.nxp.nfclib.defaultimpl.KeyData;
-import com.nxp.nfclib.desfire.DESFireEV3CFile;
-import com.nxp.nfclib.desfire.DESFireEV3CFileSettingsHelper;
 import com.nxp.nfclib.desfire.DESFireEV3File;
 import com.nxp.nfclib.desfire.DESFireFactory;
 import com.nxp.nfclib.desfire.DESFireFile;
-import com.nxp.nfclib.desfire.EV1KeySettings;
 import com.nxp.nfclib.desfire.EV3ApplicationKeySettings;
 import com.nxp.nfclib.desfire.EV3CPICCConfigurationSettings;
 import com.nxp.nfclib.desfire.IDESFireEV1;
@@ -245,6 +242,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button createApplication1;
     private Button transactionTimer;
 
+    // playing with secure data message
+    private Button createNdef, createNdefSdm;
     private Button formatNdefT4T, sdmIsEnabled, sdmEnable;
 
 
@@ -334,6 +333,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         formatPicc = findViewById(R.id.btnFormatPicc);
         selectMasterApplication = findViewById(R.id.btnSelectMasterApplication);
         //changeMasterKeyToAes = findViewById(R.id.btnChangeMasterKeyToAes);
+        createNdef = findViewById(R.id.btnCreateNdef); // creates a ndef file/container
+        createNdefSdm = findViewById(R.id.btnCreateNdefSdm); // creates a ndef file/container
+
         formatNdefT4T = findViewById(R.id.btnFormatT4T);
         sdmIsEnabled = findViewById(R.id.btnSdmIsEnabled);
         sdmEnable = findViewById(R.id.btnSdmEnable);
@@ -3019,6 +3021,46 @@ newKeyVersion - new key version byte.
          * section for general workflow
          */
 
+        getFileSettingsDesfire.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "getFileSettingsDesfire";
+                writeToUiAppend(output, logString);
+                writeToUiAppend(output, logString + " for selectedFileIdInt: " + selectedFileIdInt);
+                DESFireEV3File.EV3FileSettings selectedFileSettings = getFileSettings(logString, selectedFileIdInt);
+                DESFireEV3File.StdEV3DataFileSettings selectedStandardFileSettings = null;
+                if (selectedFileSettings.getType() == DESFireEV3File.EV3FileType.DataStandard) {
+                    writeToUiAppend(output, logString + " it is a StandardDataFile, mapping fileSettings");
+                    selectedStandardFileSettings = (DESFireEV3File.StdEV3DataFileSettings) selectedFileSettings;
+                }
+
+                // see Mifare DESFire Light Features and Hints AN12343.pdf pages 24-26 getFileSettings
+                // see NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 26-27 showing SDM options
+
+                if  (selectedFileSettings != null) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppend(output, logString + " communicationSettings:\n" + selectedFileSettings.getComSettings());
+                    if (selectedStandardFileSettings != null) {
+                        // get more data
+                        writeToUiAppend(output, "standardFileSize: " + selectedStandardFileSettings.getFileSize());
+                        boolean isSdmEnabled = selectedStandardFileSettings.isSDMEnabled();
+                        boolean isSdmEncryptedEnabled = selectedStandardFileSettings.isSDMEncryptFileDataEnabled();
+                        boolean isSdmReadCounterEnabled = selectedStandardFileSettings.isSDMReadCounterEnabled();
+                        boolean isSdmUidMirroringEnabled = selectedStandardFileSettings.isUIDMirroringEnabled();
+                        writeToUiAppend(output, "isSdmEnabled: " + isSdmEnabled +
+                                " isSdmEncryptedEnabled: " + isSdmEncryptedEnabled +
+                                " isSdmReadCounterEnabled: " + isSdmReadCounterEnabled +
+                                " isSdmUidMirroringEnabled: " + isSdmUidMirroringEnabled);
+                    }
+                } else {
+                    writeToUiAppend(output, logString + " FAILURE");
+                }
+            }
+        });
+
+
+
         formatPicc.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -3047,6 +3089,46 @@ newKeyVersion - new key version byte.
                     //selectedFileId = "";
                     //selectedFileIdInt = -1;
                     //fileSelected.setText("");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
+        createNdef.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "createNdef";
+                writeToUiAppend(output, logString);
+                boolean success = createANdefFile(logString);
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
+                    vibrateShort();
+                }
+            }
+        });
+
+        createNdefSdm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "createNdefSdm";
+                writeToUiAppend(output, logString);
+                boolean success = createANdefFileSdmEnabled(logString);
+                writeToUiAppend(output, logString + ": " + success);
+                if (!success) {
+                    writeToUiAppend(output, logString + " NOT Success, aborted");
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NOT Success, aborted", COLOR_RED);
+                    return;
+                } else {
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
                     vibrateShort();
@@ -3688,6 +3770,374 @@ see DESFireEV3File.StdEV3DataFileSettings file:///Users/michaelfehr/Downloads/Ta
         return false;
     }
 
+    private boolean createANdefFileSdmEnabled(String logString) {
+        Log.d(TAG, logString);
+
+        // status WORKING
+        // will create an empty NDEF message, maximum size 256 byte
+
+        // check enabled by reading the file settings
+        // see NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 26 + 27
+
+        try {
+            // this script will run several steps
+            Log.d(TAG, "this script will generate a NDEF file on the DESFire EV3 tag");
+
+            // step 1: select Master Application
+            Log.d(TAG, "step 1: select Master Application 00 00 00");
+            desFireEV3.selectApplication(0);
+
+            // step 2: CreateApplication using the default AID 000001h
+/*
+void createApplication(byte[] applicationID,
+                       EV3ApplicationKeySettings applicationSettings,
+                       byte[] isoFileID,
+                       byte[] dfName)
+Creates new applications on the PICC. The application is initialized according to the given settings.
+The application keys of the active key set are initialized with the Default Application Key.
+Note: PICC Application (AID 0) has to be selected in advance.
+Takes the extra parameters ISO file ID and directory file name to facilitate ISO 7816-4 operations.
+Parameters:
+applicationID - Desired application ID (3 bytes)
+applicationSettings - use EV3ApplicationKeySettings.Builder to build/Set the application settings.
+isoFileID - 2 byte ISO/IEC 7816-4 File Identifier.
+dfName - 0 to 16 bytes ISO/IEC 7816-4 DF Name for this application.
+ */
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            byte[] ISO_APPLICATION_ID = Utils.hexStringToByteArray("10E1"); // the AID is E110 but written in low endian
+            byte[] ISO_APPLICATION_DF = Utils.hexStringToByteArray("D2760000850101"); // this is the AID for NDEF
+            //byte APPLICATION_KEY_SETTINGS = (byte) 0x0F;
+            byte APPLICATION_NUMBER_OF_KEYS = (byte) 0x1; // number of keys: 1, TDES keys
+            //byte COMMUNICATION_SETTINGS = (byte) 0x0f;
+            int FILE_ID_01 = 1;
+            byte[] ISO_FILE_ID_01 = Utils.hexStringToByteArray("03E1"); // the file ID is E103 but written as low endian
+            int FILE_01_SIZE = 15;
+
+            EV3ApplicationKeySettings applicationSettings = new EV3ApplicationKeySettings.Builder()
+                    .setMaxNumberOfApplicationKeys(APPLICATION_NUMBER_OF_KEYS)
+                    // trying to use AES
+                    //.setKeyTypeOfApplicationKeys(KeyType.THREEDES)
+                    .setKeyTypeOfApplicationKeys(KeyType.AES128)
+                    .setIsoFileIdentifierPresent(true)
+                    // application key settings
+                    .setAppKeySettingsChangeable(true)
+                    .setAuthenticationRequiredForDirectoryConfigurationData(false)
+                    .setAppDeletionWithAppMasterKey(false)
+                    .setAuthenticationRequiredForFileManagement(false)
+                    .build();
+            Log.d(TAG, "step 2: create new application 00 00 01");
+            desFireEV3.createApplication(APPLICATION_ID, applicationSettings, ISO_APPLICATION_ID, ISO_APPLICATION_DF);
+
+            // step 3: select the new application '000001'
+            Log.d(TAG, "step 3: select new application 00 00 01");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            // step 4: create a standard data file 01
+/*
+void createFile(int fileNumber,
+                byte[] isoFileID,
+                DESFireEV3File.EV3FileSettings fileSettings)
+Creates a file within a DESFire EV3 application. This API allows flexibility to use ISO file ID.
+This method also accepts the ISO file ID that is used in ISO 7816-4 operations.
+Parameters:
+fileNumber - File to be created with this file number.
+isoFileID - ISO file identifier of file.
+fileSettings - File to be created with these file settings which are present in FileSettings Object.use builders of different derived class of FileSettings to create file settings object,
+ */
+            byte readAccess01 = (byte) (0x0E);
+            byte writeAccess01 = (byte) (0x0E);
+            byte readWriteAccess01 = (byte) (0x0E);
+            byte changeAccess01 = (byte) (0x0E);
+            DESFireEV3File.StdEV3DataFileSettings fileSettings01;
+            fileSettings01 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_01_SIZE);
+            Log.d(TAG, "step 4: create a standard data file 01");
+            desFireEV3.createFile(FILE_ID_01, ISO_FILE_ID_01, fileSettings01);
+
+            // step 05: write to standard file 01
+            // byte[] NDEF_CONTAINER = Utils.hexStringToByteArray("000F20003A00340406E10408000000"); // 2048 bytes
+            byte[] NDEF_CONTAINER = Utils.hexStringToByteArray("000F20003A00340406E10401000000"); // 256 byte
+
+/*
+void writeData(int fileNumber,
+               int offset,
+               byte[] data)
+The writeData command allows to write data to a Standard Data File or a Standard Backup File.
+Parameters:
+fileNumber - File Number to which data is written.
+offset - Offset within the data file
+data - Data to be written to the file
+ */
+            Log.d(TAG, "step 5: write to the standard data file 01 (NDEF container)");
+            desFireEV3.writeData(FILE_ID_01, 0, NDEF_CONTAINER);
+
+
+            // step 06a: authenticate with app master key
+            //Log.d(TAG, "step 06a: authenticate with DES app master key");
+            Log.d(TAG, "step 06a: authenticate with AES app master key");
+            boolean success = newAesEv2Auth(APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+            //boolean success = legacyDesAuth(logString, APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_DES_DEFAULT);
+            if (success) {
+                writeToUiAppend(output, logString + " SUCCESS");
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SUCCESS", COLOR_GREEN);
+                vibrateShort();
+            } else {
+                writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " NO SUCCESS", COLOR_RED);
+            }
+
+            // step 06 create a standard file 02
+            byte FILE_ID_02 = (byte) 0x02;
+            byte[] ISO_FILE_ID_02 = Utils.hexStringToByteArray("04E1");// the file ID is E104 but written as low endian
+            int FILE_02_SIZE = 256; // NDEF FileSize equal to 000100h (256 Bytes)
+            byte[] ISO_DF = Utils.hexStringToByteArray("D2760000850101"); // this is the AID for NDEF
+
+/*
+public StdEV3DataFileSettings(IDESFireEV1.CommunicationType communicationType,
+                              byte readAccess,
+                              byte writeAccess,
+                              byte readWriteAccess,
+                              byte changeAccess,
+                              int fileSize)
+Base class Constructor.
+Parameters:
+communicationType - Communication settings used while accessing the file.
+readAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read access denied.
+0x00 to 0x0d -- authentication required with the key number for read access.
+writeAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : write access denied.
+0x00 to 0x0d -- authentication required with the key number for write access.
+readWriteAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read and write access denied.
+0x00 to 0x0d -- authentication required with the key number for read and write access.
+changeAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read access denied.
+0x00 to 0x0d -- authentication required with the key number for changing the access rights of the file.
+fileSize - Size of the Standard Data File
+ */
+
+            DESFireEV3File.StdEV3DataFileSettings fileSettings02;
+            // this file is using nearly the same access settings as file 01
+            byte changeAccess02 = (byte) (0x00);
+            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
+
+            // this part is to add SDM enabling
+            fileSettings02.setSDMEnabled(true);
+            fileSettings02.setUIDMirroringEnabled(true);
+            byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+            fileSettings02.setUidOffset(sdmUidOffset);
+            byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            fileSettings02.setUidOffset(sdmPiccOffset);
+
+            Log.d(TAG, "step 6: create a standard data file 02");
+            desFireEV3.createFile(FILE_ID_02, ISO_FILE_ID_02, fileSettings02);
+
+            // step 7: write to standard file 02
+            Log.d(TAG, "step 7: write to the standard data file 02 (NDEF container)");
+            byte[] NDEF_FILE_02 = Utils.hexStringToByteArray("0000"); // empty NDEF container
+            desFireEV3.writeData(FILE_ID_02, 0, NDEF_FILE_02);
+
+            Log.d(TAG, "generation of a NDEF file on the DESFire EV3 tag finished");
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean createANdefFile(String logString) {
+        Log.d(TAG, logString);
+
+        // status WORKING
+        // will create an empty NDEF message, maximum size 256 byte
+
+        try {
+            // this script will run several steps
+            Log.d(TAG, "this script will generate a NDEF file on the DESFire EV3 tag");
+
+            // step 1: select Master Application
+            Log.d(TAG, "step 1: select Master Application 00 00 00");
+            desFireEV3.selectApplication(0);
+
+            // step 2: CreateApplication using the default AID 000001h
+/*
+void createApplication(byte[] applicationID,
+                       EV3ApplicationKeySettings applicationSettings,
+                       byte[] isoFileID,
+                       byte[] dfName)
+Creates new applications on the PICC. The application is initialized according to the given settings.
+The application keys of the active key set are initialized with the Default Application Key.
+Note: PICC Application (AID 0) has to be selected in advance.
+Takes the extra parameters ISO file ID and directory file name to facilitate ISO 7816-4 operations.
+Parameters:
+applicationID - Desired application ID (3 bytes)
+applicationSettings - use EV3ApplicationKeySettings.Builder to build/Set the application settings.
+isoFileID - 2 byte ISO/IEC 7816-4 File Identifier.
+dfName - 0 to 16 bytes ISO/IEC 7816-4 DF Name for this application.
+ */
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            byte[] ISO_APPLICATION_ID = Utils.hexStringToByteArray("10E1"); // the AID is E110 but written in low endian
+            byte[] ISO_APPLICATION_DF = Utils.hexStringToByteArray("D2760000850101"); // this is the AID for NDEF
+            //byte APPLICATION_KEY_SETTINGS = (byte) 0x0F;
+            byte APPLICATION_NUMBER_OF_KEYS = (byte) 0x1; // number of keys: 1, TDES keys
+            //byte COMMUNICATION_SETTINGS = (byte) 0x0f;
+            int FILE_ID_01 = 1;
+            byte[] ISO_FILE_ID_01 = Utils.hexStringToByteArray("03E1"); // the file ID is E103 but written as low endian
+            int FILE_01_SIZE = 15;
+
+            EV3ApplicationKeySettings applicationSettings = new EV3ApplicationKeySettings.Builder()
+                    .setMaxNumberOfApplicationKeys(APPLICATION_NUMBER_OF_KEYS)
+                    .setKeyTypeOfApplicationKeys(KeyType.THREEDES)
+                    .setIsoFileIdentifierPresent(true)
+                    // application key settings
+                    .setAppKeySettingsChangeable(true)
+                    .setAuthenticationRequiredForDirectoryConfigurationData(false)
+                    .setAppDeletionWithAppMasterKey(false)
+                    .setAuthenticationRequiredForFileManagement(false)
+                    .build();
+            Log.d(TAG, "step 2: create new application 00 00 01");
+            desFireEV3.createApplication(APPLICATION_ID, applicationSettings, ISO_APPLICATION_ID, ISO_APPLICATION_DF);
+
+            // step 3: select the new application '000001'
+            Log.d(TAG, "step 3: select new application 00 00 01");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            // step 4: create a standard data file 01
+/*
+void createFile(int fileNumber,
+                byte[] isoFileID,
+                DESFireEV3File.EV3FileSettings fileSettings)
+Creates a file within a DESFire EV3 application. This API allows flexibility to use ISO file ID.
+This method also accepts the ISO file ID that is used in ISO 7816-4 operations.
+Parameters:
+fileNumber - File to be created with this file number.
+isoFileID - ISO file identifier of file.
+fileSettings - File to be created with these file settings which are present in FileSettings Object.use builders of different derived class of FileSettings to create file settings object,
+ */
+            byte readAccess01 = (byte) (0x0E);
+            byte writeAccess01 = (byte) (0x0E);
+            byte readWriteAccess01 = (byte) (0x0E);
+            byte changeAccess01 = (byte) (0x0E);
+            DESFireEV3File.StdEV3DataFileSettings fileSettings01;
+            fileSettings01 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_01_SIZE);
+            Log.d(TAG, "step 4: create a standard data file 01");
+            desFireEV3.createFile(FILE_ID_01, ISO_FILE_ID_01, fileSettings01);
+
+            // step 05: write to standard file 01
+            // byte[] NDEF_CONTAINER = Utils.hexStringToByteArray("000F20003A00340406E10408000000"); // 2048 bytes
+            byte[] NDEF_CONTAINER = Utils.hexStringToByteArray("000F20003A00340406E10401000000"); // 256 byte
+
+/*
+void writeData(int fileNumber,
+               int offset,
+               byte[] data)
+The writeData command allows to write data to a Standard Data File or a Standard Backup File.
+Parameters:
+fileNumber - File Number to which data is written.
+offset - Offset within the data file
+data - Data to be written to the file
+ */
+            Log.d(TAG, "step 5: write to the standard data file 01 (NDEF container)");
+            desFireEV3.writeData(FILE_ID_01, 0, NDEF_CONTAINER);
+
+            // step 06 create a standard file 02
+
+            byte FILE_ID_02 = (byte) 0x02;
+            byte[] ISO_FILE_ID_02 = Utils.hexStringToByteArray("04E1");// the file ID is E104 but written as low endian
+            int FILE_02_SIZE = 256; // NDEF FileSize equal to 000100h (256 Bytes)
+            byte[] ISO_DF = Utils.hexStringToByteArray("D2760000850101"); // this is the AID for NDEF
+
+/*
+public StdEV3DataFileSettings(IDESFireEV1.CommunicationType communicationType,
+                              byte readAccess,
+                              byte writeAccess,
+                              byte readWriteAccess,
+                              byte changeAccess,
+                              int fileSize)
+Base class Constructor.
+Parameters:
+communicationType - Communication settings used while accessing the file.
+readAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read access denied.
+0x00 to 0x0d -- authentication required with the key number for read access.
+writeAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : write access denied.
+0x00 to 0x0d -- authentication required with the key number for write access.
+readWriteAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read and write access denied.
+0x00 to 0x0d -- authentication required with the key number for read and write access.
+changeAccess - Take values from 0x00 to 0xF.
+0xE : free access.
+0xF : read access denied.
+0x00 to 0x0d -- authentication required with the key number for changing the access rights of the file.
+fileSize - Size of the Standard Data File
+ */
+
+            DESFireEV3File.StdEV3DataFileSettings fileSettings02;
+            // this file is using nearly the same access settings as file 01
+            byte changeAccess02 = (byte) (0x00);
+            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
+            Log.d(TAG, "step 6: create a standard data file 02");
+            desFireEV3.createFile(FILE_ID_02, ISO_FILE_ID_02, fileSettings02);
+
+            // step 7: write to standard file 02
+            Log.d(TAG, "step 7: write to the standard data file 02 (NDEF container)");
+            byte[] NDEF_FILE_02 = Utils.hexStringToByteArray("0000"); // empty NDEF container
+            desFireEV3.writeData(FILE_ID_02, 0, NDEF_FILE_02);
+
+            Log.d(TAG, "generation of a NDEF file on the DESFire EV3 tag finished");
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     private byte[] readFromStandardBackupFile(String logString) {
         Log.d(TAG, logString);
@@ -4338,6 +4788,9 @@ see DESFireEV3File.StdEV3DataFileSettings file:///Users/michaelfehr/Downloads/Ta
     }
 
     private DESFireEV3File.EV3FileSettings getFileSettings(String logString, int fileNumber) {
+        // see Mifare DESFire Light Features and Hints AN12343.pdf pages 24-26 getFileSettings
+        // see NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 26-27 showing SDM options
+
         DESFireEV3File.EV3FileSettings fileSettings;
         try {
             fileSettings = desFireEV3.getDESFireEV3FileSettings(fileNumber);
