@@ -3690,6 +3690,32 @@ newKeyVersion - new key version byte.
         Log.d(TAG, logString);
         try {
 
+            /*
+            https://www.mifare.net/support/forum/search/ntag424/
+            writeNDEF API is using ISOUpdateBinary command. This command requires selection of NDEF file upfront with ISOSelectFile. Please check below lines in correct order:
+            byte[] NTAG424DNA_NDEF_FILE = {(byte) 0x04, (byte) 0xE1};
+            tag.isoSelectApplicationByFileID(NTAG424DNA_NDEF_FILE);
+            tag.writeNDEF(myndefMessageWrapper);
+
+            byte[] NTAG424DNA_NDEF_APP_NAME =
+            {(byte) 0xD2, (byte) 0x76, 0x00, 0x00, (byte) 0x85, 0x01, 0x01};
+            keyData.setKey(keyDefault);
+            // this is a MUST //
+            ntag424DNA.isoSelectApplicationByDFName(NTAG424DNA_NDEF_APP_NAME);
+            ntag424DNA.authenticateEV2First(1, keyData, null);
+
+            In order that SDM is working, also UID mirroring needs to be enabled, you need to set Offset positions for each as well. Something like:
+
+            fileSettings.setUIDMirroringEnabled(true);
+            fileSettings.setUidOffset(new byte[] { (byte) 0x1A, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacInputOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmReadCounterOffset(new byte[]{(byte) 0x29, (byte) 0x00, (byte) 0x00});
+            fileSettings.setSdmAccessRights(new byte[]{(byte) 0x12, (byte) 0xFE}); //FileAR.SDMMetaRead (ENCPICCData) key = 0xE, FileAR.SDMFileRead (CMAC) key = 0x2, RFU = 0xF, FileAR.SDMCtrRet key = 0xE
+            ntag424DNATT.changeFileSettings( (byte) 0x02, settings);`
+
+             */
+
             // first select master app
             // important: first select the Master Application ('0')
             writeToUiAppend(output, logString + " step 1 select master application");
@@ -3714,16 +3740,34 @@ newKeyVersion - new key version byte.
             writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
             if (!isSDMEnabled) {
                 writeToUiAppend(output, "trying to enable SDM feature");
+
+                byte keyWriteAccess = stdFileSettings.getWriteAccess();
+                writeToUiAppend(output, "key with writeAccess: " + keyWriteAccess);
+
                 stdFileSettings.setSDMEnabled(true);
                 stdFileSettings.setUIDMirroringEnabled(true);
-                byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+                byte[] sdmUidOffset = new byte[]{(byte) 0x03, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setUidOffset(sdmUidOffset);
-                byte[] sdmPiccOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
-                stdFileSettings.setUidOffset(sdmPiccOffset);
-// ASCII Encoding mode: 1
-//F121h = SDMAccessRights (RFU: 0xF, FileAR.SDMCtrRet = 0x1, FileAR.SDMMetaRead: 0x2, FileAR.SDMFileRead: 0x1)
 
-                byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x11, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+
+                stdFileSettings.setSDMReadCounterEnabled(false);
+                byte[] sdmCounterOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setSdmReadCounterOffset(sdmCounterOffset);
+
+                stdFileSettings.setSDMEncryptFileDataEnabled(false);
+                stdFileSettings.setSDMReadCounterLimitEnabled(false);
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x21, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+
+
+                // ASCII Encoding mode: 1 - no setting in API
+
+                //F121h = SDMAccessRights (RFU: 0xF, FileAR.SDMCtrRet = 0x1, FileAR.SDMMetaRead: 0x2, FileAR.SDMFileRead: 0x1)
+                //byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+                byte[] sdmAccessRights = Utils.hexStringToByteArray("EEEE");
                 stdFileSettings.setSdmAccessRights(sdmAccessRights);
 
                 DESFireEV3File.EV3FileSettings desFireEV3FileSettings = (DESFireEV3File.EV3FileSettings) stdFileSettings;
@@ -4038,7 +4082,9 @@ fileSize - Size of the Standard Data File
             DESFireEV3File.StdEV3DataFileSettings fileSettings02;
             // this file is using nearly the same access settings as file 01
             byte changeAccess02 = (byte) (0x00);
-            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_02_SIZE);
+            byte writeAccess02 = (byte) 0x00;
+            fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess02, readWriteAccess01, changeAccess01, FILE_02_SIZE);
+            //fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_02_SIZE);
             //fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
 /*
             // this part is to add SDM enabling
