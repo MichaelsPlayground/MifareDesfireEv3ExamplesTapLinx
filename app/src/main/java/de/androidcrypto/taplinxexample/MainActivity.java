@@ -4086,7 +4086,7 @@ fileSize - Size of the Standard Data File
             fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess02, readWriteAccess01, changeAccess01, FILE_02_SIZE);
             //fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess01, FILE_02_SIZE);
             //fileSettings02 = new DESFireEV3File.StdEV3DataFileSettings(IDESFireEV1.CommunicationType.Plain, readAccess01, writeAccess01, readWriteAccess01, changeAccess02, FILE_02_SIZE);
-/*
+
             // this part is to add SDM enabling
             fileSettings02.setSDMEnabled(true);
             fileSettings02.setUIDMirroringEnabled(false);
@@ -4097,7 +4097,7 @@ fileSize - Size of the Standard Data File
             fileSettings02.setSDMReadCounterEnabled(true);
             byte[] sdmReadCounterOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
             fileSettings02.setSdmReadCounterOffset(sdmReadCounterOffset);
-*/
+
             Log.d(TAG, "step 6: create a standard data file 02");
             desFireEV3.createFile(FILE_ID_02, ISO_FILE_ID_02, fileSettings02);
 
