@@ -247,6 +247,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button createNdef, createNdefSdm;
     private Button formatNdefT4T, sdmIsEnabled, sdmEnable;
     private Button changeFileSettingsToSdm;
+    private Button sdmGetFileSettings, sdmCompleteFormat;
 
     // constants
     private String lineSeparator = "----------";
@@ -341,6 +342,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         sdmIsEnabled = findViewById(R.id.btnSdmIsEnabled);
         sdmEnable = findViewById(R.id.btnSdmEnable);
         changeFileSettingsToSdm = findViewById(R.id.btnChangeFileSettingsToSdm);
+
+        sdmGetFileSettings = findViewById(R.id.btnSdmGetFileSettings);
+        sdmCompleteFormat = findViewById(R.id.btnSdmCompleteFormat);
 
 
         // application handling
@@ -3253,6 +3257,8 @@ newKeyVersion - new key version byte.
             }
         });
 
+
+
         changeFileSettingsToSdm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -3287,6 +3293,80 @@ newKeyVersion - new key version byte.
                     writeToUiAppend(output, logString + " SUCCESS");
                     writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + ": " + success, COLOR_GREEN);
                     vibrateShort();
+                }
+            }
+        });
+
+        sdmGetFileSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "SDM getFileSettings";
+                writeToUiAppend(output, logString);
+
+                // I'm trying to read fileSettings for some file and hope they are SDM enabled
+
+                int selectedFileIdInt = 2; // run cr ndef sdm first !
+                writeToUiAppend(output, logString + " for selectedFileIdInt: " + selectedFileIdInt);
+                DESFireEV3File.EV3FileSettings selectedFileSettings = getFileSettingsSdmCommand(logString, selectedFileIdInt);
+                if (selectedFileSettings == null) {
+                    writeToUiAppend(output, "Error on Authentication, aborted");
+                    return;
+                }
+                DESFireEV3File.StdEV3DataFileSettings selectedStandardFileSettings = null;
+                if (selectedFileSettings.getType() == DESFireEV3File.EV3FileType.DataStandard) {
+                    writeToUiAppend(output, logString + " it is a StandardDataFile, mapping fileSettings");
+                    selectedStandardFileSettings = (DESFireEV3File.StdEV3DataFileSettings) selectedFileSettings;
+                }
+
+                StdEV3DataFileSettingsExtended selectedStandardFileSettingsExtended = null;
+                if (selectedFileSettings.getType() == DESFireEV3File.EV3FileType.DataStandard) {
+                    writeToUiAppend(output, logString + " it is a StandardDataFile, mapping fileSettings");
+                    selectedStandardFileSettingsExtended = (StdEV3DataFileSettingsExtended) selectedFileSettings;
+                }
+
+                // see Mifare DESFire Light Features and Hints AN12343.pdf pages 24-26 getFileSettings
+                // see NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 26-27 showing SDM options
+
+                // using the extended class
+                if  (selectedStandardFileSettingsExtended != null) {
+                    writeToUiAppend(output, logString + " using class StdEV3DataFileSettingsExtended");
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppend(output, logString + " communicationSettings:\n" + selectedStandardFileSettingsExtended.getComSettings());
+                    if (selectedStandardFileSettingsExtended != null) {
+                        // get more data
+                        writeToUiAppend(output, "standardFileSize: " + selectedStandardFileSettingsExtended.getFileSize());
+                        boolean isSdmEnabled = selectedStandardFileSettingsExtended.isSDMEnabled();
+                        boolean isSdmEncryptedEnabled = selectedStandardFileSettingsExtended.isSDMEncryptFileDataEnabled();
+                        boolean isSdmReadCounterEnabled = selectedStandardFileSettingsExtended.isSDMReadCounterEnabled();
+                        boolean isSdmUidMirroringEnabled = selectedStandardFileSettingsExtended.isUIDMirroringEnabled();
+                        writeToUiAppend(output, "isSdmEnabled: " + isSdmEnabled +
+                                " isSdmEncryptedEnabled: " + isSdmEncryptedEnabled +
+                                " isSdmReadCounterEnabled: " + isSdmReadCounterEnabled +
+                                " isSdmUidMirroringEnabled: " + isSdmUidMirroringEnabled);
+                    }
+                } else {
+                    writeToUiAppend(output, logString + " FAILURE");
+                }
+
+                // using the original class
+                if  (selectedFileSettings != null) {
+                    writeToUiAppend(output, logString + " SUCCESS");
+                    writeToUiAppend(output, logString + " communicationSettings:\n" + selectedFileSettings.getComSettings());
+                    if (selectedStandardFileSettings != null) {
+                        // get more data
+                        writeToUiAppend(output, "standardFileSize: " + selectedStandardFileSettings.getFileSize());
+                        boolean isSdmEnabled = selectedStandardFileSettings.isSDMEnabled();
+                        boolean isSdmEncryptedEnabled = selectedStandardFileSettings.isSDMEncryptFileDataEnabled();
+                        boolean isSdmReadCounterEnabled = selectedStandardFileSettings.isSDMReadCounterEnabled();
+                        boolean isSdmUidMirroringEnabled = selectedStandardFileSettings.isUIDMirroringEnabled();
+                        writeToUiAppend(output, "isSdmEnabled: " + isSdmEnabled +
+                                " isSdmEncryptedEnabled: " + isSdmEncryptedEnabled +
+                                " isSdmReadCounterEnabled: " + isSdmReadCounterEnabled +
+                                " isSdmUidMirroringEnabled: " + isSdmUidMirroringEnabled);
+                    }
+                } else {
+                    writeToUiAppend(output, logString + " FAILURE");
                 }
             }
         });
@@ -3801,6 +3881,81 @@ newKeyVersion - new key version byte.
             e.printStackTrace();
         }
         return false;
+    }
+
+    public DESFireEV3File.EV3FileSettings getFileSettingsSdmCommand(String logString, int fileNumber) {
+        Log.d(TAG, logString);
+        try {
+
+            /*
+            https://www.mifare.net/support/forum/search/ntag424/
+            writeNDEF API is using ISOUpdateBinary command. This command requires selection of NDEF file upfront with ISOSelectFile. Please check below lines in correct order:
+            byte[] NTAG424DNA_NDEF_FILE = {(byte) 0x04, (byte) 0xE1};
+            tag.isoSelectApplicationByFileID(NTAG424DNA_NDEF_FILE);
+            tag.writeNDEF(myndefMessageWrapper);
+
+            byte[] NTAG424DNA_NDEF_APP_NAME =
+            {(byte) 0xD2, (byte) 0x76, 0x00, 0x00, (byte) 0x85, 0x01, 0x01};
+            keyData.setKey(keyDefault);
+            // this is a MUST //
+            ntag424DNA.isoSelectApplicationByDFName(NTAG424DNA_NDEF_APP_NAME);
+            ntag424DNA.authenticateEV2First(1, keyData, null);
+
+            In order that SDM is working, also UID mirroring needs to be enabled, you need to set Offset positions for each as well. Something like:
+
+            fileSettings.setUIDMirroringEnabled(true);
+            fileSettings.setUidOffset(new byte[] { (byte) 0x1A, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacInputOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmReadCounterOffset(new byte[]{(byte) 0x29, (byte) 0x00, (byte) 0x00});
+            fileSettings.setSdmAccessRights(new byte[]{(byte) 0x12, (byte) 0xFE}); //FileAR.SDMMetaRead (ENCPICCData) key = 0xE, FileAR.SDMFileRead (CMAC) key = 0x2, RFU = 0xF, FileAR.SDMCtrRet key = 0xE
+            ntag424DNATT.changeFileSettings( (byte) 0x02, settings);`
+
+             */
+
+            // first select master app
+            // important: first select the Master Application ('0')
+            writeToUiAppend(output, logString + " step 1 select master application");
+            desFireEV3.selectApplication(0);
+
+            writeToUiAppend(output, logString + " step 2 select ndef application 00 00 01");
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            writeToUiAppend(output, logString + " step 3 auth with application master key");
+            boolean suc = newAesEv2Auth(APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+            if (!suc) {
+                Log.e(TAG, "Authentication failure");
+                return null;
+            }
+
+            writeToUiAppend(output, logString + " step 4 get file settings");
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, fileNumber);
+            return fileSettings;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
