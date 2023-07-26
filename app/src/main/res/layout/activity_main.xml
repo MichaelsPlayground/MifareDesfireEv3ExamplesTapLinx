@@ -2791,6 +2791,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="8dp"
                         android:layout_weight="1"
+                        android:backgroundTint="#8BC34A"
                         android:text="format" />
 
                     <Button
@@ -2824,6 +2825,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="8dp"
                     android:layout_weight="1"
+                    android:backgroundTint="#8BC34A"
                     android:text="cr ndef sdm" />
 
                 <Button
@@ -2832,6 +2834,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="8dp"
                     android:layout_weight="1"
+                    android:backgroundTint="#8BC34A"
                     android:text="ndef to SDM" />
 
             </LinearLayout>

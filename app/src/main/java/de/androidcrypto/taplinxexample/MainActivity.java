@@ -3747,7 +3747,7 @@ newKeyVersion - new key version byte.
             //stdFileSettings.setSdmReadCounterOffset(sdmReadCounterOffset);
 
             // this is published as encrypted PICC data
-            byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            byte[] sdmPiccOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
             stdFileSettings.setPiccDataOffset(sdmPiccOffset);
 
             // this is not published
@@ -3755,7 +3755,7 @@ newKeyVersion - new key version byte.
             //stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
 
             // latest position
-            byte[] sdmMacOffset = new byte[]{(byte) 0x45, (byte) 0x00, (byte) 0x00};
+            byte[] sdmMacOffset = new byte[]{(byte) 0x40, (byte) 0x00, (byte) 0x00};
             stdFileSettings.setSdmMacOffset(sdmMacOffset);
 
 
@@ -3767,75 +3767,27 @@ newKeyVersion - new key version byte.
             // old getFileSettings: 000040EEEE00010041F1212000003000004000000322D0E81A3D45A1
             // command to change:   5F0240EEEE41F121200000300000400000
             // Response received :  00
-/*
-protocol field: https://
-URI field: choose.url.com/ntag424?e=A0BBE8C95F311498FB35F6C9FAAAAF896F64CFBBAB067D6A00000099
-Payload length: 82 bytes
-Payload data:
-[00] 04 63 68 6F 6F 73 65 2E 75 72 6C 2E 63 6F 6D 2F |.choose.url.com/|
-[10] 6E 74 61 67 34 32 34 3F 65 3D 41 30 42 42 45 38 |ntag424?e=A0BBE8|
-[20] 43 39 35 46 33 31 31 34 39 38 46 42 33 35 46 36 |C95F311498FB35F6|
-[30] 43 39 46 41 41 41 41 46 38 39 36 46 36 34 43 46 |C9FAAAAF896F64CF|
-[40] 42 42 41 42 30 36 37 44 36 41 30 30 30 30 30 30 |BBAB067D6A000000|
-[50] 39 39                                           |99              |
 
-# NDEF message:
+
+/*
+data: BEB9D162EFB003EA562015516B3B38F1
+MAC:
+# NDEF message: 09E6BCD892412A7080
 [00] D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 6C 2E |..RU.choose.url.|
-[10] 63 6F 6D 2F 6E 74 61 67 34 32 34 3F 65 3D 41 30 |com/ntag424?e=A0|
-[20] 42 42 45 38 43 39 35 46 33 31 31 34 39 38 46 42 |BBE8C95F311498FB|
-[30] 33 35 46 36 43 39 46 41 41 41 41 46 38 39 36 46 |35F6C9FAAAAF896F|
-[40] 36 34 43 46 42 42 41 42 30 36 37 44 36 41 30 30 |64CFBBAB067D6A00|
-[50] 30 30 30 30 39 39                               |000099          |
-
-pos begin NDEF message ab pos 31
-ins 48 chars = 24 bytes
-data seems to be sdmPicOffset (16 bytes)  A0BBE8C95F311498FB35F6C9FAAAAF89 confirmed
-sdmMacOffset (8 bytes)                    6F64CFBBAB067D6A                 confirmed
+[10] 63 6F 6D 2F 6E 74 61 67 34 32 34 3F 65 3D 42 45 |com/ntag424?e=BE|
+[20] 42 39 44 31 36 32 45 46 42 30 30 33 45 41 35 36 |B9D162EFB003EA56|
+[30] 32 30 31 35 35 31 36 42 33 42 33 38 46 31 30 30 |2015516B3B38F100|
+[40] 30 30 30 39 45 36 42 43 44 38 39 32 34 31 32 41 |0009E6BCD892412A|
+[50] 37 30 38 30 39 39                               |708099          |
  */
-
-/*
-for decryption of PICC data see:
-NTAG 424 DNA NT4H2421Gx.pdf page 37
-SDM Session Key Generation: page 41
-for general lengths see: page 43
-
-NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf
-page 8 SDM
-page 10 SDM Session Key Generation
-
-Decryption of PICCData
-Verification side (e.g. backend, RF reader, NFC Mobile application, etc.) needs to know following parameters:
-Prerequisites: Offset name: Length [bytes]: Algorithm:
-SDMMetaReadKey set to App.KeyX (0x0 - 0x4)
-PICCENCDataOffset
-32*n; n=1,2,..., n
-PICCENCData = E(KSDMMetaRead; PICCDataTag [ || UID ][ || SDMReadCtr ] || RandomPadding(1))
-Prerequisites: Offset name: Length [bytes]: Algorithm:
-SDMMetaReadKey used PICCENCDataOffset in URL PICCENCDataLength
-PICCData = D(KSDMMetaRead; PICCENCData)
-
-Encrypted PICC Data is 16 bytes long: EF963FF7828658A599F3041510671E88
-SDMMetaReadKey = App.Key0             00000000000000000000000000000000
-D(KSDMMetaReadKey, PICCENCData)       C704DE5F1EACC0403D0000DA5CF60941
-Content:
-Lc  Name             Sample
-01  PICC Data Tag    C7
-07  UID              04DE5F1EACC040
-03  SdmReadCtr       3D0000
-05  Random Padding   DA5CF60941
-16  total
-
-PICCDataTag [bit]:                         1100 0111
-PICCDataTag - UID mirroring [bit7]:        1 (UID mirroring enabled)        leftmost bit
-PICCDataTag - SDMReadCtr mirroring [bit6]: 1 (SDMReadCtr mirroring enabled) 2. bit from left
-PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last 4 bits
-
-
-for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
- */
-
 
             writeToUiAppend(output, "SDM feature should be enabled now");
+
+            // get some key data
+            byte[] sdmAccessRightsRead = stdFileSettings.getSdmAccessRights();
+            Log.d(TAG, printData("sdmAccessRightsRead", sdmAccessRightsRead));
+
+
             //}
             return true;
         } catch (InvalidResponseLengthException e) {
@@ -3903,7 +3855,11 @@ for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
                 //byte[] sdmAccessRights = Utils.hexStringToByteArray("E121");
                 stdFileSettings.setSdmAccessRights(sdmAccessRights);
 
-                // without the next line I'm receiving Response received : 9E
+            /**
+             * WARNING - DO NOT CHANGE ANY DATA HERE
+             */
+
+            // without the next line I'm receiving Response received : 9E
                 stdFileSettings.setUIDMirroringEnabled(false);
                 // not published
                 byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
@@ -3959,6 +3915,19 @@ pos begin NDEF message ab pos 31
 ins 48 chars = 24 bytes
 data seems to be sdmPicOffset (16 bytes)  A0BBE8C95F311498FB35F6C9FAAAAF89 confirmed
 sdmMacOffset (8 bytes)                    6F64CFBBAB067D6A                 confirmed
+ */
+
+/*
+data: 38444244393741343139334544324541413933323134384438414235333537
+mac:
+
+# NDEF message:
+[00] D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 6C 2E |..RU.choose.url.|
+[10] 63 6F 6D 2F 6E 74 61 67 34 32 34 3F 65 3D 42 45 |com/ntag424?e=BE|
+[20] 42 39 44 31 36 32 45 46 42 30 30 33 45 41 35 36 |B9D162EFB003EA56|
+[30] 32 30 31 35 35 31 36 42 33 42 33 38 46 31 30 30 |2015516B3B38F100|
+[40] 30 30 30 39 45 36 42 43 44 38 39 32 34 31 32 41 |0009E6BCD892412A|
+[50] 37 30 38 30 39 39                               |708099          |
  */
 
 /*
@@ -4034,7 +4003,7 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
     public boolean changeFileSettingsToSdmCommand(String logString) {
         Log.d(TAG, logString);
         try {
-
+            // status WORKING
             /*
             https://www.mifare.net/support/forum/search/ntag424/
             writeNDEF API is using ISOUpdateBinary command. This command requires selection of NDEF file upfront with ISOSelectFile. Please check below lines in correct order:
@@ -4089,23 +4058,28 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 byte keyWriteAccess = stdFileSettings.getWriteAccess();
                 writeToUiAppend(output, "key with writeAccess: " + keyWriteAccess);
 
+                // don't forget - all offset length data are decimal LSB, not hex values
+
                 stdFileSettings.setSDMEnabled(true);
                 stdFileSettings.setUIDMirroringEnabled(true);
                 byte[] sdmUidOffset = new byte[]{(byte) 0x03, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setUidOffset(sdmUidOffset);
 
-                byte[] sdmPiccOffset = new byte[]{(byte) 0x11, (byte) 0x00, (byte) 0x00};
-                //stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setPiccDataOffset(sdmPiccOffset);
 
-                stdFileSettings.setSDMReadCounterEnabled(false);
+                stdFileSettings.setSDMReadCounterEnabled(true);
                 //byte[] sdmCounterOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
                 //stdFileSettings.setSdmReadCounterOffset(sdmCounterOffset);
 
                 stdFileSettings.setSDMEncryptFileDataEnabled(false);
                 stdFileSettings.setSDMReadCounterLimitEnabled(false);
-                //byte[] sdmMacInputOffset = new byte[]{(byte) 0x21, (byte) 0x00, (byte) 0x00};
-                //stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
 
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+
+                byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setSdmMacOffset(sdmMacOffset);
 
                 // ASCII Encoding mode: 1 - no setting in API
 
@@ -4119,13 +4093,72 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 //byte[] sdmAccessRights = Utils.hexStringToByteArray("E1F1");
 
                 //byte[] sdmAccessRights = Utils.hexStringToByteArray("F1E1");
-                byte[] sdmAccessRights = Utils.hexStringToByteArray("EEEF");
+                byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
                 stdFileSettings.setSdmAccessRights(sdmAccessRights);
 
                 DESFireEV3File.EV3FileSettings desFireEV3FileSettings = (DESFireEV3File.EV3FileSettings) stdFileSettings;
                 writeToUiAppend(output, logString + " step 4 change file settings command to PICC");
                 desFireEV3.changeDESFireEV3FileSettings(2, desFireEV3FileSettings);
                 writeToUiAppend(output, "SDM feature should be enabled now");
+/*
+for decryption of PICC data see:
+NTAG 424 DNA NT4H2421Gx.pdf page 37
+SDM Session Key Generation: page 41
+for general lengths see: page 43
+
+For PICC data tag see page 37:
+Bit 7 UID mirroring 1 = enabled
+Bit 6 ReadCounter mirroring 1 = enabled
+Bit 4+5 RFU 00
+Bit 3-0 UID length, 7h if UID is mirrored and 0 if not mirrored
+The key applied for encryption of PICCData is the SDMMetaReadKey as defined by the SDMMetaRead access right.
+
+NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf
+page 8 SDM
+page 10 SDM Session Key Generation
+
+Decryption of PICCData
+Verification side (e.g. backend, RF reader, NFC Mobile application, etc.) needs to know following parameters:
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey set to App.KeyX (0x0 - 0x4)
+PICCENCDataOffset
+32*n; n=1,2,..., n
+PICCENCData = E(KSDMMetaRead; PICCDataTag [ || UID ][ || SDMReadCtr ] || RandomPadding(1))
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey used PICCENCDataOffset in URL PICCENCDataLength
+PICCData = D(KSDMMetaRead; PICCENCData)
+
+Encrypted PICC Data is 16 bytes long: EF963FF7828658A599F3041510671E88
+SDMMetaReadKey = App.Key0             00000000000000000000000000000000
+D(KSDMMetaReadKey, PICCENCData)       C704DE5F1EACC0403D0000DA5CF60941
+Content:
+Lc  Name             Sample
+01  PICC Data Tag    C7
+07  UID              04DE5F1EACC040
+03  SdmReadCtr       3D0000
+05  Random Padding   DA5CF60941
+16  total
+
+PICCDataTag [bit]:                         1100 0111
+PICCDataTag - UID mirroring [bit7]:        1 (UID mirroring enabled)        leftmost bit
+PICCDataTag - SDMReadCtr mirroring [bit6]: 1 (SDMReadCtr mirroring enabled) 2. bit from left
+PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last 4 bits
+
+
+for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
+ */
+
+
+/*
+result:
+Payload length: 84 bytes
+Note: the encrypted picc data begins NOT after e= but after e=0 !!
+choose.url.com/ntag424?e=03297CD2D5893896D8E4213E6B77BFD7D00007DD9D08F8F9684B109999
+choose.url.com/ntag424?e=
+encrypted picc data 3297CD2D5893896D8E4213E6B77BFD7D (16 bytes)
+MAC data:           7DD9D08F8F9684B1
+ */
+
                 return true;
             }
             return true;
@@ -4542,7 +4575,10 @@ fileSize - Size of the Standard Data File
             System.arraycopy(ndefHeaderUrl, 0, ndefMessage, 0, ndefHeaderUrl.length);
             System.arraycopy(ndefSampleData, 0, ndefMessage, ndefHeaderUrl.length, ndefSampleData.length);
 
-            ndefMessage = Utils.hexStringToByteArray("0056D10152550463686F6F73652E75726C2E636F6D2F6E7461673432343F653D3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
+            //ndefMessage =  Utils.hexStringToByteArray("0056D10152550463686F6F73652E75726C2E636F6D2F6E7461673432343F653D3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
+            ndefMessage =  Utils.hexStringToByteArray("0058D10154550463686F6F73652E75726C2E636F6D2F6E7461673432343F653D30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303039393939");
+            //ndefMessage = Utils.hexStringToByteArray("0076D10152750463686F6F73652E75726C2E636F6D2F6E7461673432343F653D30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
+            // ndefMessage = Utils.hexStringToByteArray("0056D101525504 63686F6F73652E75726C2E636F6D2F6E7461673432343F653D3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
 /*
 # NDEF file contents:
 [000] 00 56 D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 |.V..RU.choose.ur|
