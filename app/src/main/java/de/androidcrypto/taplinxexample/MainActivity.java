@@ -3724,6 +3724,172 @@ newKeyVersion - new key version byte.
             boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
             writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
             //if (!isSDMEnabled) {
+            writeToUiAppend(output, "trying to enable SDM feature");
+            stdFileSettings.setSDMEnabled(true);
+
+            // without this I'm receiving a sdmEnable UsageResponseLength occurred UsageException
+            // Invalid Parameters! {Invalid Value for SdmAccessRights}
+            //byte[] sdmAccessRights = Utils.hexStringToByteArray("EEEF");
+            //byte[] sdmAccessRights = Utils.hexStringToByteArray("0000");
+            byte[] sdmAccessRights = Utils.hexStringToByteArray("F121"); // WORKING !! see NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf page 34
+            //byte[] sdmAccessRights = Utils.hexStringToByteArray("E121");
+            stdFileSettings.setSdmAccessRights(sdmAccessRights);
+
+            // without the next line I'm receiving Response received : 9E
+            stdFileSettings.setUIDMirroringEnabled(false);
+            // not published
+            byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+            stdFileSettings.setUidOffset(sdmUidOffset);
+
+            // not given out, it is encrypted PICC data
+            stdFileSettings.setSDMReadCounterEnabled(true);
+            byte[] sdmReadCounterOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
+            stdFileSettings.setSdmReadCounterOffset(sdmReadCounterOffset);
+
+            // this is published as encrypted PICC data
+            byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+            stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+
+            // this is not published
+            byte[] sdmMacInputOffset = new byte[]{(byte) 0x32, (byte) 0x00, (byte) 0x00};
+            stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+
+            // latest position
+            byte[] sdmMacOffset = new byte[]{(byte) 0x45, (byte) 0x00, (byte) 0x00};
+            stdFileSettings.setSdmMacOffset(sdmMacOffset);
+
+
+            // now  sending this data back to tag
+            writeToUiAppend(output, logString + " step 4 change file settings command to PICC");
+            desFireEV3.changeDESFireEV3FileSettings(2, stdFileSettings);
+
+            // using                byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+            // old getFileSettings: 000040EEEE00010041F1212000003000004000000322D0E81A3D45A1
+            // command to change:   5F0240EEEE41F121200000300000400000
+            // Response received :  00
+/*
+protocol field: https://
+URI field: choose.url.com/ntag424?e=A0BBE8C95F311498FB35F6C9FAAAAF896F64CFBBAB067D6A00000099
+Payload length: 82 bytes
+Payload data:
+[00] 04 63 68 6F 6F 73 65 2E 75 72 6C 2E 63 6F 6D 2F |.choose.url.com/|
+[10] 6E 74 61 67 34 32 34 3F 65 3D 41 30 42 42 45 38 |ntag424?e=A0BBE8|
+[20] 43 39 35 46 33 31 31 34 39 38 46 42 33 35 46 36 |C95F311498FB35F6|
+[30] 43 39 46 41 41 41 41 46 38 39 36 46 36 34 43 46 |C9FAAAAF896F64CF|
+[40] 42 42 41 42 30 36 37 44 36 41 30 30 30 30 30 30 |BBAB067D6A000000|
+[50] 39 39                                           |99              |
+
+# NDEF message:
+[00] D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 6C 2E |..RU.choose.url.|
+[10] 63 6F 6D 2F 6E 74 61 67 34 32 34 3F 65 3D 41 30 |com/ntag424?e=A0|
+[20] 42 42 45 38 43 39 35 46 33 31 31 34 39 38 46 42 |BBE8C95F311498FB|
+[30] 33 35 46 36 43 39 46 41 41 41 41 46 38 39 36 46 |35F6C9FAAAAF896F|
+[40] 36 34 43 46 42 42 41 42 30 36 37 44 36 41 30 30 |64CFBBAB067D6A00|
+[50] 30 30 30 30 39 39                               |000099          |
+
+pos begin NDEF message ab pos 31
+ins 48 chars = 24 bytes
+data seems to be sdmPicOffset (16 bytes)  A0BBE8C95F311498FB35F6C9FAAAAF89 confirmed
+sdmMacOffset (8 bytes)                    6F64CFBBAB067D6A                 confirmed
+ */
+
+/*
+for decryption of PICC data see:
+NTAG 424 DNA NT4H2421Gx.pdf page 37
+SDM Session Key Generation: page 41
+for general lengths see: page 43
+
+NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf
+page 8 SDM
+page 10 SDM Session Key Generation
+
+Decryption of PICCData
+Verification side (e.g. backend, RF reader, NFC Mobile application, etc.) needs to know following parameters:
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey set to App.KeyX (0x0 - 0x4)
+PICCENCDataOffset
+32*n; n=1,2,..., n
+PICCENCData = E(KSDMMetaRead; PICCDataTag [ || UID ][ || SDMReadCtr ] || RandomPadding(1))
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey used PICCENCDataOffset in URL PICCENCDataLength
+PICCData = D(KSDMMetaRead; PICCENCData)
+
+Encrypted PICC Data is 16 bytes long: EF963FF7828658A599F3041510671E88
+SDMMetaReadKey = App.Key0             00000000000000000000000000000000
+D(KSDMMetaReadKey, PICCENCData)       C704DE5F1EACC0403D0000DA5CF60941
+Content:
+Lc  Name             Sample
+01  PICC Data Tag    C7
+07  UID              04DE5F1EACC040
+03  SdmReadCtr       3D0000
+05  Random Padding   DA5CF60941
+16  total
+
+PICCDataTag [bit]:                         1100 0111
+PICCDataTag - UID mirroring [bit7]:        1 (UID mirroring enabled)        leftmost bit
+PICCDataTag - SDMReadCtr mirroring [bit6]: 1 (SDMReadCtr mirroring enabled) 2. bit from left
+PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last 4 bits
+
+ */
+
+
+            writeToUiAppend(output, "SDM feature should be enabled now");
+            //}
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            //writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // as this configuration is working and providing encrypted PICC data this is a frozen config
+    private boolean sdmEnableCommandFrozen(String logString) {
+        Log.d(TAG, logString);
+        try {
+
+            // first select master app
+            // important: first select the Master Application ('0')
+            writeToUiAppend(output, logString + " step 1 select master application");
+            desFireEV3.selectApplication(0);
+
+            writeToUiAppend(output, logString + " step 2 select ndef application 00 00 01");
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            writeToUiAppend(output, logString + " step 3 auth with application master key");
+            boolean suc = newAesEv2Auth(APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+            if (!suc) {
+                Log.e(TAG, "Authentication failure");
+                return false;
+            }
+
+            writeToUiAppend(output, logString + " step 4 reading existing fileSettings");
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, 2);
+            DESFireEV3File.StdEV3DataFileSettings stdFileSettings = (DESFireEV3File.StdEV3DataFileSettings) fileSettings;
+            int fileSize = stdFileSettings.getFileSize();
+            boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
+            writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
+            //if (!isSDMEnabled) {
                 writeToUiAppend(output, "trying to enable SDM feature");
                 stdFileSettings.setSDMEnabled(true);
 
@@ -3737,20 +3903,24 @@ newKeyVersion - new key version byte.
 
                 // without the next line I'm receiving Response received : 9E
                 stdFileSettings.setUIDMirroringEnabled(false);
-                // missing - Invalid Parameters! {Invalid Value for UID Offset}
+                // not published
                 byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
-                //stdFileSettings.setUidOffset(sdmUidOffset);
+                stdFileSettings.setUidOffset(sdmUidOffset);
 
+                // not given out, it is encrypted PICC data
                 stdFileSettings.setSDMReadCounterEnabled(true);
                 byte[] sdmReadCounterOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setSdmReadCounterOffset(sdmReadCounterOffset);
 
-                byte[] sdmPiccOffset = new byte[]{(byte) 0x22, (byte) 0x00, (byte) 0x00};
+                // this is published as encrypted PICC data
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setPiccDataOffset(sdmPiccOffset);
 
+                // this is not published
                 byte[] sdmMacInputOffset = new byte[]{(byte) 0x32, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
 
+                // latest position
                 byte[] sdmMacOffset = new byte[]{(byte) 0x45, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setSdmMacOffset(sdmMacOffset);
 
