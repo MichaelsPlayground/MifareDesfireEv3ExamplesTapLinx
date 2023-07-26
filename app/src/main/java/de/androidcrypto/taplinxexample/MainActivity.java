@@ -3736,15 +3736,15 @@ newKeyVersion - new key version byte.
             stdFileSettings.setSdmAccessRights(sdmAccessRights);
 
             // without the next line I'm receiving Response received : 9E
-            stdFileSettings.setUIDMirroringEnabled(false);
+            stdFileSettings.setUIDMirroringEnabled(true);
             // not published
             byte[] sdmUidOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
-            stdFileSettings.setUidOffset(sdmUidOffset);
+            //stdFileSettings.setUidOffset(sdmUidOffset);
 
             // not given out, it is encrypted PICC data
             stdFileSettings.setSDMReadCounterEnabled(true);
             byte[] sdmReadCounterOffset = new byte[]{(byte) 0x10, (byte) 0x00, (byte) 0x00};
-            stdFileSettings.setSdmReadCounterOffset(sdmReadCounterOffset);
+            //stdFileSettings.setSdmReadCounterOffset(sdmReadCounterOffset);
 
             // this is published as encrypted PICC data
             byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
@@ -3752,7 +3752,7 @@ newKeyVersion - new key version byte.
 
             // this is not published
             byte[] sdmMacInputOffset = new byte[]{(byte) 0x32, (byte) 0x00, (byte) 0x00};
-            stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+            //stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
 
             // latest position
             byte[] sdmMacOffset = new byte[]{(byte) 0x45, (byte) 0x00, (byte) 0x00};
@@ -3830,6 +3830,8 @@ PICCDataTag - UID mirroring [bit7]:        1 (UID mirroring enabled)        left
 PICCDataTag - SDMReadCtr mirroring [bit6]: 1 (SDMReadCtr mirroring enabled) 2. bit from left
 PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last 4 bits
 
+
+for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
  */
 
 
