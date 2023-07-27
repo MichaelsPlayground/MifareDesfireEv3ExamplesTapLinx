@@ -4060,7 +4060,7 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 byte keyWriteAccess = stdFileSettings.getWriteAccess();
                 writeToUiAppend(output, "key with writeAccess: " + keyWriteAccess);
 
-                // don't forget - all offset length data are decimal LSB, not hex values
+                // don't forget - all offset length data are LSB hex values
                 // based on sample data in NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 30 ff
                 // https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000
                 // for offset samples see page 34 ff
