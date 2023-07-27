@@ -4125,7 +4125,7 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 desFireEV3.changeDESFireEV3FileSettings(2, desFireEV3FileSettings);
                 writeToUiAppend(output, "SDM feature should be enabled now");
 /*
-for decryption of PICC data see:
+for dencryption of PICC data see:
 NTAG 424 DNA NT4H2421Gx.pdf page 37
 SDM Session Key Generation: page 41
 for general lengths see: page 43
@@ -4175,12 +4175,7 @@ for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
 
 /*
 result:
-Payload length: 84 bytes
-Note: the encrypted picc data begins NOT after e= but after e=0 !!
-choose.url.com/ntag424?e=03297CD2D5893896D8E4213E6B77BFD7D00007DD9D08F8F9684B109999
-choose.url.com/ntag424?e=
-encrypted picc data 3297CD2D5893896D8E4213E6B77BFD7D (16 bytes)
-MAC data:           7DD9D08F8F9684B1
+https://sdm.nfcdeveloper.com/tag?picc_data=FBCBE6602D4FF482C1B961242300394D&cmac=112E0AE968CF6DE7
  */
 
                 return true;
