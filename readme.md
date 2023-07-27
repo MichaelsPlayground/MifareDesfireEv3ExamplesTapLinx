@@ -129,7 +129,7 @@ As we set `SDM Meta Read Access Rights` to`1` we are going to receive the **encr
 
 ## What is the encrypted PICC data ?
 
-When asking for encrypted PICC data the card generates these 4 data fields:
+When asking for **encrypted PICC data** the card generates these 4 data fields:
 
 ```plaintext
 Name          Length Sample value   Description
@@ -220,7 +220,10 @@ NFC TAG UID: 04514032501490
 Read counter: 9
 ```
 
+## Other mirroring options
 
-
-
+A final note on other mirroring options: You need to read the 2 documents reagarding NTAG424 DNA very carefully 
+to get all options and fields. If you are trying to get the UID and Read Counter data in Plain you don't set the 
+PICC offset but use the separate offsets for UID and Read Counter instead. I did not test other option at all so I 
+can't give you any help or examples on this, sorry.
 
