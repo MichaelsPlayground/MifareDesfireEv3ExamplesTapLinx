@@ -4111,10 +4111,10 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 // Bit 15-12: SDM Meta Read Access Rights. 0x00 to 0x04 : Encrypted PICC data mirroring using the targeted AppKey 0x0E : Plain PICC data mirroring 0x0F : No PICC data mirroring
                 // Bit 11-8: SDM File Read Access Rights 0x00 to 0x04: Targeted AppKey 0x0F : No SDM for Reading
                 // Bit 3-0: SDM Counter Ret Access Rights 0x00 to 0x04: Targeted AppKey 0x0E : Free 0x0F : No Access
-                //byte[] sdmAccessRights = Utils.hexStringToByteArray("E1F1");
 
-                //byte[] sdmAccessRights = Utils.hexStringToByteArray("F1E1");
+                //byte[] sdmAccessRights = Utils.hexStringToByteArray("F444"); // testing
                 byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+
                 stdFileSettings.setSdmAccessRights(sdmAccessRights);
 
                 DESFireEV3File.EV3FileSettings desFireEV3FileSettings = (DESFireEV3File.EV3FileSettings) stdFileSettings;
@@ -4175,6 +4175,12 @@ result:
 https://sdm.nfcdeveloper.com/tag?picc_data=FBCBE6602D4FF482C1B961242300394D&cmac=112E0AE968CF6DE7
  */
 
+                /*
+Response received :    000000EEEE000100DDE6083C70E4729B
+Command sent to card : 5F0240EEEEC1F1212A0000500000500000
+
+
+                 */
                 return true;
             }
             return true;
