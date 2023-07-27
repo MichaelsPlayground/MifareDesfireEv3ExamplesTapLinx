@@ -6,6 +6,8 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.nfc.NdefMessage;
+import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
@@ -4059,26 +4061,48 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 writeToUiAppend(output, "key with writeAccess: " + keyWriteAccess);
 
                 // don't forget - all offset length data are decimal LSB, not hex values
+                // based on sample data in NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 30 ff
+                // https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000
+                // for offset samples see page 34 ff
+
+                // use Android's NDEF classes to construct the NDEF message
+                // this is the data from Feature and Hints with offsets:
+                // byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00}; // 20h = 32d, counting from s in https
+                // byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};  // 43h = 67d, counting from s in https
+                //String ndefSampleUrlWrong = "https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+                //String ndefSampleUrl = "https://choose.aburl.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+                //String ndefSampleBackendUrl = "https://sdm.nfcdeveloper.com/tag?picc_data=00000000000000000000000000000000&cmac=0000000000000000";
+                // BackendUrl offset: PICC data: 40d = 28h, cmac: 78d = 4Eh
 
                 stdFileSettings.setSDMEnabled(true);
-                stdFileSettings.setUIDMirroringEnabled(true);
-                byte[] sdmUidOffset = new byte[]{(byte) 0x03, (byte) 0x00, (byte) 0x00};
-                stdFileSettings.setUidOffset(sdmUidOffset);
 
-                byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
-                stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+                stdFileSettings.setUIDMirroringEnabled(true);
+                //byte[] sdmUidOffset = new byte[]{(byte) 0x03, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setUidOffset(sdmUidOffset);
 
                 stdFileSettings.setSDMReadCounterEnabled(true);
-                //byte[] sdmCounterOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
-                //stdFileSettings.setSdmReadCounterOffset(sdmCounterOffset);
-
                 stdFileSettings.setSDMEncryptFileDataEnabled(false);
                 stdFileSettings.setSDMReadCounterLimitEnabled(false);
 
+                //byte[] sdmCounterOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setSdmReadCounterOffset(sdmCounterOffset);
+                /*
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
                 byte[] sdmMacInputOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
-                stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
-
                 byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                */
+
+                // settings for https://sdm.nfcdeveloper.com/ Secure Dynamic Messaging Backend Server Demo
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x2A, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
+
+
+
+
+                stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+                stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+                //byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
                 stdFileSettings.setSdmMacOffset(sdmMacOffset);
 
                 // ASCII Encoding mode: 1 - no setting in API
@@ -4563,7 +4587,42 @@ fileSize - Size of the Standard Data File
             desFireEV3.createFile(FILE_ID_02, ISO_FILE_ID_02, fileSettings02);
 
             // step 7: write to standard file 02
+/*
+NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 30 ff
+Note: offset won't fit using this content template - use the one I'm providing
+6.7 Prepare NDEF message
+01 NDEF File Content format https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000
+02 NDEF File Content in Hex: 63686F6F73652E75726C2E636F6D2F6E7461673432343F653D303030303030303030303030303030303030303030303030303030303030303026633D30303030303030303030303030303030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+03 NDEF Length + NDEF header: 0051 + D1014D5504
+04 Size of data – useful for Lc in APDUs: 80 (128d)
+08 UID Offset (in Bytes): 20 (49d) (NDEF Length + NDEF header Length + NDEF File Content Length, including “=” sign in “? e=”)
+10 CMAC Input Offset (in Bytes): 43 (67d): Fully configurable. Verification side needs to know this value to check validity of received CMAC
+11: CMAC Offset (in Bytes):      43 (67d): including "=" sign in "&c=
+ */
 
+            // use Android's NDEF classes to construct the NDEF message
+            // this is the data from Feature and Hints with offsets:
+            // byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00}; // 20h = 32d, counting from s in https
+            // byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};  // 43h = 67d, counting from s in https
+            String ndefSampleUrlWrong = "https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+            //String ndefSampleUrl = "https://choose.aburl.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+            //NdefRecord ndefRecord = NdefRecord.createUri(ndefSampleUrl);
+
+            String ndefSampleBackendUrl = "https://sdm.nfcdeveloper.com/tag?picc_data=00000000000000000000000000000000&cmac=0000000000000000";
+            // BackendUrl offset: PICC data: 40d = 28h, cmac: 78d = 4Eh
+            NdefRecord ndefRecord = NdefRecord.createUri(ndefSampleBackendUrl);
+
+            NdefMessage ndefMessage = new NdefMessage(ndefRecord);
+            byte[] ndefMessageBytesHeadless = ndefMessage.toByteArray();
+            // 2 bytes are missing: 0x0062
+            writeToUiAppend(output, printData("ndefMessageBytesHeadless", ndefMessageBytesHeadless));
+            byte[] ndefMessageBytes = new byte[ndefMessageBytesHeadless.length + 2];
+            System.arraycopy(new byte[]{(byte) 0x00, (byte) (ndefMessageBytesHeadless.length)}, 0, ndefMessageBytes, 0, 2);
+            System.arraycopy(ndefMessageBytesHeadless, 0, ndefMessageBytes, 2, ndefMessageBytesHeadless.length);
+            writeToUiAppend(output, "ndefSampleUrl: " + ndefSampleBackendUrl);
+            writeToUiAppend(output, printData("ndefMessageBytes", ndefMessageBytes));
+
+            /*
             // data from NTAG424DNA Feature & Hints
             byte[] ndefHeaderUrl = Utils.hexStringToByteArray("0022D1011E5504"); // 7 bytes // append: 0022
             byte[] ndefSampleData = Utils.hexStringToByteArray("63686F6F73652E75726C2E636F6D2F6E7461673432343F653D303030303030303030303030303030303030303030303030303030303030303026633D30303030303030303030303030303030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
@@ -4579,6 +4638,8 @@ fileSize - Size of the Standard Data File
             ndefMessage =  Utils.hexStringToByteArray("0058D10154550463686F6F73652E75726C2E636F6D2F6E7461673432343F653D30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303039393939");
             //ndefMessage = Utils.hexStringToByteArray("0076D10152750463686F6F73652E75726C2E636F6D2F6E7461673432343F653D30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
             // ndefMessage = Utils.hexStringToByteArray("0056D101525504 63686F6F73652E75726C2E636F6D2F6E7461673432343F653D3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303939");
+            writeToUiAppend(output, printData("ndefMessage",ndefMessage));
+             */
 /*
 # NDEF file contents:
 [000] 00 56 D1 01 52 55 04 63 68 6F 6F 73 65 2E 75 72 |.V..RU.choose.ur|
@@ -4588,7 +4649,7 @@ fileSize - Size of the Standard Data File
 [040] 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 |0000000000000000|
 [050] 30 30 30 30 30 30 39 39 00 00 00 00 00 00 00 00 |00000099........|
  */
-            writeToUiAppend(output, printData("ndefMessage",ndefMessage));
+
 
             // working ndefMessage after writing by NfcNdefExample
             //byte[] ndefMessageExample = Utils.hexStringToByteArray("0022D1011E5504736F6D652E6578616D706C652E636F6D26613D31323334353637383930");
@@ -4597,9 +4658,8 @@ fileSize - Size of the Standard Data File
             //writeToUiAppend(output, printData("ndefMessageExample",ndefMessageExample));
 
             Log.d(TAG, "step 7: write to the standard data file 02 (NDEF container)");
-            desFireEV3.writeData(FILE_ID_02, 0, ndefMessage);
-            //byte[] NDEF_FILE_02 = Utils.hexStringToByteArray("0000"); // empty NDEF container
-            //desFireEV3.writeData(FILE_ID_02, 0, NDEF_FILE_02);
+            //desFireEV3.writeData(FILE_ID_02, 0, ndefMessage);
+            desFireEV3.writeData(FILE_ID_02, 0, ndefMessageBytes);
 
             Log.d(TAG, "generation of a NDEF file on the DESFire EV3 tag finished");
             return true;
