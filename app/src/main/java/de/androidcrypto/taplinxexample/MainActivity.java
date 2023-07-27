@@ -4097,9 +4097,6 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
                 byte[] sdmMacInputOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
                 byte[] sdmMacOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
 
-
-
-
                 stdFileSettings.setPiccDataOffset(sdmPiccOffset);
                 stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
                 //byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
