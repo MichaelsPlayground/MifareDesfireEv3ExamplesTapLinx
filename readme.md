@@ -116,6 +116,7 @@ desFireEV3.changeDESFireEV3FileSettings(2, desFireEV3FileSettings);
 ```
 
 The **SDM Access Rights** are defined as follows and refer to a key number defined during application creation. 'E' or 'F' values have a different meaning:
+
 ```plaintext
 sdmAccessRights F121 are mapped to:
 F = RFU, please just use F as value
