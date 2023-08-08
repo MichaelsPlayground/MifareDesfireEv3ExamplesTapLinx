@@ -4005,6 +4005,231 @@ PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last
     public boolean changeFileSettingsToSdmCommand(String logString) {
         Log.d(TAG, logString);
         try {
+            // status WORKING with change file settings to encrypted PICC data + encrypted file data
+            /*
+            https://www.mifare.net/support/forum/search/ntag424/
+            writeNDEF API is using ISOUpdateBinary command. This command requires selection of NDEF file upfront with ISOSelectFile. Please check below lines in correct order:
+            byte[] NTAG424DNA_NDEF_FILE = {(byte) 0x04, (byte) 0xE1};
+            tag.isoSelectApplicationByFileID(NTAG424DNA_NDEF_FILE);
+            tag.writeNDEF(myndefMessageWrapper);
+
+            byte[] NTAG424DNA_NDEF_APP_NAME =
+            {(byte) 0xD2, (byte) 0x76, 0x00, 0x00, (byte) 0x85, 0x01, 0x01};
+            keyData.setKey(keyDefault);
+            // this is a MUST //
+            ntag424DNA.isoSelectApplicationByDFName(NTAG424DNA_NDEF_APP_NAME);
+            ntag424DNA.authenticateEV2First(1, keyData, null);
+
+            In order that SDM is working, also UID mirroring needs to be enabled, you need to set Offset positions for each as well. Something like:
+
+            fileSettings.setUIDMirroringEnabled(true);
+            fileSettings.setUidOffset(new byte[] { (byte) 0x1A, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmMacInputOffset(new byte[] {(byte) 0x42, (byte) 0x00, (byte) 0x00 });
+            fileSettings.setSdmReadCounterOffset(new byte[]{(byte) 0x29, (byte) 0x00, (byte) 0x00});
+            fileSettings.setSdmAccessRights(new byte[]{(byte) 0x12, (byte) 0xFE}); //FileAR.SDMMetaRead (ENCPICCData) key = 0xE, FileAR.SDMFileRead (CMAC) key = 0x2, RFU = 0xF, FileAR.SDMCtrRet key = 0xE
+            ntag424DNATT.changeFileSettings( (byte) 0x02, settings);`
+
+             */
+
+            // first select master app
+            // important: first select the Master Application ('0')
+            writeToUiAppend(output, logString + " step 1 select master application");
+            desFireEV3.selectApplication(0);
+
+            writeToUiAppend(output, logString + " step 2 select ndef application 00 00 01");
+            byte[] APPLICATION_ID = Utils.hexStringToByteArray("010000");
+            desFireEV3.selectApplication(APPLICATION_ID);
+
+            writeToUiAppend(output, logString + " step 3 auth with application master key");
+            boolean suc = newAesEv2Auth(APPLICATION_KEY_MASTER_NUMBER, APPLICATION_KEY_MASTER_AES_DEFAULT);
+            if (!suc) {
+                Log.e(TAG, "Authentication failure");
+                return false;
+            }
+
+            writeToUiAppend(output, logString + " step 4 change file settings");
+            DESFireEV3File.EV3FileSettings fileSettings = getFileSettings(logString, 2);
+            DESFireEV3File.StdEV3DataFileSettings stdFileSettings = (DESFireEV3File.StdEV3DataFileSettings) fileSettings;
+            int fileSize = stdFileSettings.getFileSize();
+            boolean isSDMEnabled = stdFileSettings.isSDMEnabled();
+            writeToUiAppend(output, "file 2 size: " + fileSize + " isSDMEnabled: " + isSDMEnabled);
+            if (!isSDMEnabled) {
+                writeToUiAppend(output, "trying to enable SDM feature");
+
+                byte keyWriteAccess = stdFileSettings.getWriteAccess();
+                writeToUiAppend(output, "key with writeAccess: " + keyWriteAccess);
+
+                // don't forget - all offset length data are LSB hex values
+                // based on sample data in NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf pages 30 ff
+                // https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000
+                // for offset samples see page 34 ff
+
+                // use Android's NDEF classes to construct the NDEF message
+                // this is the data from Feature and Hints with offsets:
+                // byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00}; // 20h = 32d, counting from s in https
+                // byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};  // 43h = 67d, counting from s in https
+                //String ndefSampleUrlWrong = "https://choose.url.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+                //String ndefSampleUrl = "https://choose.aburl.com/ntag424?e=00000000000000000000000000000000&c=0000000000000000";
+                //String ndefSampleBackendUrl = "https://sdm.nfcdeveloper.com/tag?picc_data=00000000000000000000000000000000&cmac=0000000000000000";
+                // BackendUrl offset: PICC data: 40d = 28h, cmac: 78d = 4Eh
+
+                stdFileSettings.setSDMEnabled(true);
+
+                stdFileSettings.setUIDMirroringEnabled(true);
+                //byte[] sdmUidOffset = new byte[]{(byte) 0x03, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setUidOffset(sdmUidOffset);
+
+                stdFileSettings.setSDMReadCounterEnabled(true);
+                stdFileSettings.setSDMEncryptFileDataEnabled(true); // ### org false
+                stdFileSettings.setSDMReadCounterLimitEnabled(false);
+
+                //byte[] sdmCounterOffset = new byte[]{(byte) 0x18, (byte) 0x00, (byte) 0x00};
+                //stdFileSettings.setSdmReadCounterOffset(sdmCounterOffset);
+                /*
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                */
+
+                // settings for https://sdm.nfcdeveloper.com/ Secure Dynamic Messaging Backend Server Demo
+                /*
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x2A, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacOffset = new byte[]{(byte) 0x50, (byte) 0x00, (byte) 0x00};
+                 */
+                byte[] sdmPiccOffset = new byte[]{(byte) 0x2A, (byte) 0x00, (byte) 0x00};
+                byte[] sdmEncFileDataOffset = new byte[]{(byte) 0x52, (byte) 0x00, (byte) 0x00}; // new
+                byte[] sdmEncryptionLength = new byte[]{(byte) 0x20, (byte) 0x00, (byte) 0x00}; // new
+                byte[] sdmMacInputOffset = new byte[]{(byte) 0x52, (byte) 0x00, (byte) 0x00};
+                byte[] sdmMacOffset = new byte[]{(byte) 0x78, (byte) 0x00, (byte) 0x00};
+
+
+                stdFileSettings.setPiccDataOffset(sdmPiccOffset);
+                stdFileSettings.setSdmEncryptionOffset(sdmEncFileDataOffset); // new
+                stdFileSettings.setSdmEncryptionLength(sdmEncryptionLength); // new
+                stdFileSettings.setSdmMacInputOffset(sdmMacInputOffset);
+                //byte[] sdmMacOffset = new byte[]{(byte) 0x43, (byte) 0x00, (byte) 0x00};
+                stdFileSettings.setSdmMacOffset(sdmMacOffset);
+                // this command is send to the  PICC to enable encrypted PICC data + encrypted file data
+                // this is the template used:
+                // https://sdm.nfcdeveloper.com/tag?picc_data=00000000000000000000000000000000&sdmenc=0102030405060708A1A2A3A4A5A6A7A8&cmac=0000000000000000
+                // and later manually changed to
+                // https://sdm.nfcdeveloper.com/tag?picc_data=00000000000000000000000000000000&enc=0102030405060708A1A2A3A4A5A6A7A8&cmac=0000000000000000
+                // 5F029F332C58ABA6992E87F89F09337990E315506EAF45E4A72E81C1DB30D728D7CEE081D3EB02A213A3
+
+
+                // ASCII Encoding mode: 1 - no setting in API
+
+                //F121h = SDMAccessRights (RFU: 0xF, FileAR.SDMCtrRet = 0x1, FileAR.SDMMetaRead: 0x2, FileAR.SDMFileRead: 0x1)
+                //byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+
+                // SDM Access Rights.
+                // Bit 15-12: SDM Meta Read Access Rights. 0x00 to 0x04 : Encrypted PICC data mirroring using the targeted AppKey 0x0E : Plain PICC data mirroring 0x0F : No PICC data mirroring
+                // Bit 11-8: SDM File Read Access Rights 0x00 to 0x04: Targeted AppKey 0x0F : No SDM for Reading
+                // Bit 3-0: SDM Counter Ret Access Rights 0x00 to 0x04: Targeted AppKey 0x0E : Free 0x0F : No Access
+
+                //byte[] sdmAccessRights = Utils.hexStringToByteArray("F444"); // testing
+                byte[] sdmAccessRights = Utils.hexStringToByteArray("F121");
+
+                stdFileSettings.setSdmAccessRights(sdmAccessRights);
+
+                DESFireEV3File.EV3FileSettings desFireEV3FileSettings = (DESFireEV3File.EV3FileSettings) stdFileSettings;
+                writeToUiAppend(output, logString + " step 4 change file settings command to PICC");
+                desFireEV3.changeDESFireEV3FileSettings(2, desFireEV3FileSettings);
+                writeToUiAppend(output, "SDM feature should be enabled now");
+/*
+for dencryption of PICC data see:
+NTAG 424 DNA NT4H2421Gx.pdf page 37
+SDM Session Key Generation: page 41
+for general lengths see: page 43
+
+For PICC data tag see page 37:
+Bit 7 UID mirroring 1 = enabled
+Bit 6 ReadCounter mirroring 1 = enabled
+Bit 4+5 RFU 00
+Bit 3-0 UID length, 7h if UID is mirrored and 0 if not mirrored
+The key applied for encryption of PICCData is the SDMMetaReadKey as defined by the SDMMetaRead access right.
+
+NTAG 424 DNA and NTAG 424 DNA TagTamper features and hints AN12196.pdf
+page 8 SDM
+page 10 SDM Session Key Generation
+
+Decryption of PICCData
+Verification side (e.g. backend, RF reader, NFC Mobile application, etc.) needs to know following parameters:
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey set to App.KeyX (0x0 - 0x4)
+PICCENCDataOffset
+32*n; n=1,2,..., n
+PICCENCData = E(KSDMMetaRead; PICCDataTag [ || UID ][ || SDMReadCtr ] || RandomPadding(1))
+Prerequisites: Offset name: Length [bytes]: Algorithm:
+SDMMetaReadKey used PICCENCDataOffset in URL PICCENCDataLength
+PICCData = D(KSDMMetaRead; PICCENCData)
+
+Encrypted PICC Data is 16 bytes long: EF963FF7828658A599F3041510671E88
+SDMMetaReadKey = App.Key0             00000000000000000000000000000000
+D(KSDMMetaReadKey, PICCENCData)       C704DE5F1EACC0403D0000DA5CF60941
+Content:
+Lc  Name             Sample
+01  PICC Data Tag    C7
+07  UID              04DE5F1EACC040
+03  SdmReadCtr       3D0000
+05  Random Padding   DA5CF60941
+16  total
+
+PICCDataTag [bit]:                         1100 0111
+PICCDataTag - UID mirroring [bit7]:        1 (UID mirroring enabled)        leftmost bit
+PICCDataTag - SDMReadCtr mirroring [bit6]: 1 (SDMReadCtr mirroring enabled) 2. bit from left
+PICCDataTag - UID Length [bit3-0]:         111b = 7d (7 byte UID)           last 4 bits
+
+
+for Offsets see NTAG 424 DNA NT4H2421Gx.pdf pages 36 + 37
+ */
+
+
+/*
+result:
+https://sdm.nfcdeveloper.com/tag?picc_data=FBCBE6602D4FF482C1B961242300394D&cmac=112E0AE968CF6DE7
+ */
+
+                /*
+Response received :    000000EEEE000100DDE6083C70E4729B
+Command sent to card : 5F0240EEEEC1F1212A0000500000500000
+
+
+                 */
+                return true;
+            }
+            return true;
+        } catch (InvalidResponseLengthException e) {
+            Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (UsageException e) {
+            Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+            Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        } catch (PICCException e) {
+            Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+            //writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+            writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean changeFileSettingsToSdmCommandWorkingFrozen(String logString) {
+        Log.d(TAG, logString);
+        try {
             // status WORKING
             /*
             https://www.mifare.net/support/forum/search/ntag424/
