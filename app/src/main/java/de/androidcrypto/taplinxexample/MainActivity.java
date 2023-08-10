@@ -251,6 +251,12 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private Button changeFileSettingsToSdm;
     private Button sdmGetFileSettings, sdmCompleteFormat;
 
+    /**
+     * section for Proximity Check tasks
+     */
+
+    private Button setProximityKeys, runProximityCheck, getProximityKeyVersions;
+
     // constants
     private String lineSeparator = "----------";
 
@@ -347,6 +353,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
         sdmGetFileSettings = findViewById(R.id.btnSdmGetFileSettings);
         sdmCompleteFormat = findViewById(R.id.btnSdmCompleteFormat);
+
+        // methods for proximity check
+        setProximityKeys = findViewById(R.id.btnProxSetKeys);
+        getProximityKeyVersions = findViewById(R.id.btnProxGetKeyVersions);
+        runProximityCheck = findViewById(R.id.btnProxRunCheck);
 
 
         // application handling
@@ -3342,6 +3353,148 @@ newKeyVersion - new key version byte.
                 } else {
                     writeToUiAppend(output, logString + " FAILURE");
                 }
+            }
+        });
+
+        /**
+         * section for Proximity checks
+         */
+
+        setProximityKeys.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                // stub
+            }
+        });
+
+        getProximityKeyVersions.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "getProximityKeyVersions";
+                writeToUiAppend(output, logString);
+
+                // get the key version of the VC Configuration Key
+                String stepString = "get the key version of the VC Configuration Key";
+                writeToUiAppend(output, stepString);
+
+                try {
+                    byte keyVersion20 = desFireEV3.getKeyVersionFor(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT);
+                    writeToUiAppend(output, "version of VC Configuration Key: " + Utils.byteToHex(keyVersion20));
+                } catch (InvalidResponseLengthException e) {
+                    Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (UsageException e) {
+                    Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+
+                // get the key version of the VC Proximity Key
+                stepString = "get the key version of the VC Proximity Key";
+                writeToUiAppend(output, stepString);
+                try {
+                    byte keyVersion21 = desFireEV3.getKeyVersionFor(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT);
+                    writeToUiAppend(output, "version of VC Proximity Key: " + Utils.byteToHex(keyVersion21));
+                } catch (InvalidResponseLengthException e) {
+                    Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (UsageException e) {
+                    Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+                vibrateShort();
+            }
+        });
+
+        runProximityCheck.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                clearOutputFields();
+                String logString = "runProximityCheck";
+                writeToUiAppend(output, logString);
+                int numberOfRounds = 1;
+                try {
+                    KeyData keyData = getAesKeyFromByteArray(VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT);
+
+                    desFireEV3.selectApplication(0);
+                    //desFireEV3.authenticate(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
+                    desFireEV3.authenticate(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
+
+                    desFireEV3.proximityCheckEV3(null, 1);
+                    //desFireEV3.proximityCheckEV3(keyData, numberOfRounds);
+                    //desFireEV3.proximityCheck(keyData, numberOfRounds); // is not working !!
+                    writeToUiAppend(output, "proximityCheckEV3: SUCCESS");
+                } catch (InvalidResponseLengthException e) {
+                    Log.e(TAG, logString + " InvalidResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " InvalidResponseLength occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (UsageException e) {
+                    Log.e(TAG, logString + " UsageResponseLength occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " UsageException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (SecurityException e) { // don't use the java Security Exception but the NXP one
+                    Log.e(TAG, logString + " SecurityException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " SecurityException occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                } catch (PICCException e) {
+                    Log.e(TAG, logString + " PICCException occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, logString + " PICCException occurred\n" + e.getMessage(), COLOR_RED);
+                    //writeToUiAppend(errorCode, "Did you forget to authenticate with a write access key ?");
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    Log.e(TAG, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppend(output, logString + " Exception occurred\n" + e.getMessage());
+                    writeToUiAppendBorderColor(errorCode, errorCodeLayout, "Exception occurred\n" + e.getMessage(), COLOR_RED);
+                    e.printStackTrace();
+                }
+/*
+desFireEV3.proximityCheckEV3(keyData, numberOfRounds);
+Response received : 9001032000
+Command sent to card : F20857464D3B38559365
+Response received : 464C1DBE85887FA9
+Command sent to card : FD2427912ED4CE5F6D
+Response received : 90555EF96416564EFA
+runProximityCheck PICCException occurred
+MAC verification failed!
+
+desFireEV3.proximityCheck(keyData, numberOfRounds);
+runProximityCheck UsageResponseLength occurred
+Command is not supported!!!{Use proximityCheckEV3 api/method instead}
+
+ */
             }
         });
 
