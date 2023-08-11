@@ -3445,16 +3445,17 @@ newKeyVersion - new key version byte.
                 clearOutputFields();
                 String logString = "runProximityCheck";
                 writeToUiAppend(output, logString);
-                int numberOfRounds = 1;
+                //int numberOfRounds = 1;
                 try {
                     KeyData keyData = getAesKeyFromByteArray(VIRTUAL_CARD_PROXIMITY_KEY_AES_DEFAULT);
 
                     desFireEV3.selectApplication(0);
                     //desFireEV3.authenticate(VIRTUAL_CARD_PROXIMITY_KEY_NUMBER_INT, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
-                    desFireEV3.authenticate(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
+                    //desFireEV3.authenticate(VIRTUAL_CARD_CONFIG_KEY_NUMBER_INT, IDESFireEV1.AuthType.AES, KeyType.AES128, keyData);
 
-                    desFireEV3.proximityCheckEV3(null, 1);
-                    //desFireEV3.proximityCheckEV3(keyData, numberOfRounds);
+                    //desFireEV3.proximityCheckEV3(null, 1);
+                    int numberOfRounds = 1;
+                    desFireEV3.proximityCheckEV3(keyData, numberOfRounds);
                     //desFireEV3.proximityCheck(keyData, numberOfRounds); // is not working !!
                     writeToUiAppend(output, "proximityCheckEV3: SUCCESS");
                 } catch (InvalidResponseLengthException e) {

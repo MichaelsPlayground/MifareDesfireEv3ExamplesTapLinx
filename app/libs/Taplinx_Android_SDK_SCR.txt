@@ -1,13 +1,13 @@
 NXP Software Content Register
 
 Release - Taplinx Android SDK
-Nov 2022
+Jun 2023
 
 
 --------------------------------------------
 
-Package:                   	nxpnfcandroidlib-3.0.0.*.zip
-Outgoing License:          	LA_OPT_NXP_Software_License v39 August 2022 - Additional distribution license granted - Section 2.3 applies.
+Package:                   	nxpnfcandroidlib-3.1.0.*.zip
+Outgoing License:          	LA_OPT_NXP_Software_License v46 June 2023  - Additional distribution license granted - Section 2.3 applies.
 License Files:             	./LA_OPT_NXP_Software_License.htm
 Type of content:           	Binary
 Description and comments:  	TapLinx Android SDK consists of Android library that can be used to generate APDU to communicate

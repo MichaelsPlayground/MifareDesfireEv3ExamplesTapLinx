@@ -972,6 +972,7 @@ public class MainActivityOrg extends Activity {
                 }
 
                 break;
+            /* since TapLinx 3-1-0
             case PlusEV1SL1:
                 mCardType = CardType.PlusEV1SL1;
                 showMessage("Plus EV1 SL1 Card detected.", 't');
@@ -992,6 +993,8 @@ public class MainActivityOrg extends Activity {
                     //plusEV1SL1.switchToSL3(objKEY_AES128);
                 }
                 break;
+
+             */
             case PlusEV1SL3:
                 mCardType = CardType.PlusEV1SL3;
                 plusEV1SL3 = PlusFactory.getInstance().getPlusEV1SL3(libInstance.getCustomModules());
@@ -1356,7 +1359,7 @@ public class MainActivityOrg extends Activity {
         }
     }
 
-
+    /* since TapLinx 3-1-0
     private void plusEV1SL1CardLogic() {
         showImageSnap(R.drawable.plus);
         tv.setText(" ");
@@ -1382,6 +1385,7 @@ public class MainActivityOrg extends Activity {
             e.printStackTrace();
         }
     }
+    */
 
     /**
      * MIFARE classic Card Logic.
